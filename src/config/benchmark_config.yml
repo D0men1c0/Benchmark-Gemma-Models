@@ -1,0 +1,118 @@
+# benchmark_config.yaml
+
+# ============================
+# General Configuration
+# ============================
+
+general:
+  experiment_name: "Gemma_Benchmark_2025"   # Name of the experiment
+  output_dir: "./benchmarks"                # Directory for saving benchmark results
+  random_seed: 42                           # Seed for reproducibility
+
+# ============================
+# Benchmark Tasks Configuration
+# ============================
+
+tasks:
+  # Example of a classification task (e.g., MMLU)
+  - name: "MMLU"
+    type: "classification"                  # Task type: classification
+    description: "Massive Multitask Language Understanding"  # Task description
+    datasets:
+      - name: "mmlu"
+        type: "classification"              # Dataset type (classification)
+        splits:                             # Dataset splits
+          - "train"
+          - "validation"
+    evaluation_metrics:                     # Metrics for model evaluation
+      - accuracy
+      - f1_score
+      - perplexity
+
+  # Example of a generation task (e.g., GSM8K)
+  - name: "GSM8K"
+    type: "generation"                      # Task type: text generation
+    description: "Math dataset with problem-solving tasks"  # Task description
+    datasets:
+      - name: "gsm8k"
+        type: "generation"                  # Dataset type (generation)
+        splits:                             # Dataset splits
+          - "train"
+          - "validation"
+    evaluation_metrics:                     # Metrics for model evaluation
+      - accuracy
+      - execution_time
+
+# ============================
+# Models Configuration
+# ============================
+
+models:
+  # Gemma model family
+  - name: "gemma-7b"
+    variant: "gemma"                        # Model family: Gemma
+    size: "7B"                              # Model size
+    framework: "huggingface"                 # Framework used (Hugging Face)
+    checkpoint: "gemma-7b-checkpoint"       # Model checkpoint
+
+  - name: "gemma-13b"
+    variant: "gemma"
+    size: "13B"
+    framework: "huggingface"
+    checkpoint: "gemma-13b-checkpoint"
+
+  # Other open models (Llama 2, Mistral)
+  - name: "llama-2-7b"
+    variant: "llama"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "llama-2-7b-checkpoint"
+
+  - name: "mistral-7b"
+    variant: "mistral"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "mistral-7b-checkpoint"
+
+# ============================
+# Model Parameters Configuration
+# ============================
+
+model_parameters:
+  batch_size: 4                           # Batch size for model training
+  max_input_length: 512                   # Maximum input length (tokens)
+  max_output_length: 512                  # Maximum output length (tokens)
+  temperature: 0.7                        # Temperature for generation (controls creativity)
+  top_p: 0.9                              # Cumulative probability for top-p sampling
+  top_k: 50                               # Maximum number of tokens to consider for top-k sampling
+
+# ============================
+# Evaluation Configuration
+# ============================
+
+evaluation:
+  batch_size: 16                          # Batch size for evaluation
+  log_interval: 100                       # Interval for logging results during evaluation
+
+# ============================
+# Results and Reporting
+# ============================
+
+reporting:
+  enabled: true                            # Whether to enable report generation
+  format: "pdf"                            # Report format (other options: "html", "csv")
+  leaderboard_enabled: true                # Whether to enable leaderboard for model comparison
+  generate_visuals:
+    charts: true                           # Whether to generate charts for results
+    tables: true                           # Whether to generate tables for results
+    save_plots: true                       # Whether to save visualized plots
+  output_dir: "./reports"                  # Directory for saving the generated reports
+
+# ============================
+# Advanced Settings
+# ============================
+
+advanced:
+  enable_multi_gpu: false                  # Whether to enable multi-GPU training
+  use_tpu: false                           # Whether to use TPU for training
+  distributed_training: false              # Whether to enable distributed training
