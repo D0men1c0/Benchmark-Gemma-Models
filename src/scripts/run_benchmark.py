@@ -1,39 +1,23 @@
-import sys
-from models.benchmark import BenchmarkRunner
-from src.utils.logger import logger
-from src.utils.file_manager import save_results
 import yaml
+import sys
+sys.path.append("src")
+from models.benchmark import BenchmarkRunner
+from utils.logger import setup_logger
 
-def load_config(config_file: str) -> dict:
-    """
-    Load configuration from YAML file.
-    
-    :param config_file: Path to the YAML configuration file.
-    :return: Configuration dictionary.
-    """
-    with open(config_file, 'r') as file:
-        return yaml.safe_load(file)
+# Set up logger
+logger = setup_logger()
 
-def main(config_file: str):
-    """
-    Main function to run the benchmark.
+def main():
+    # Load configuration from the config file
+    with open("config/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
     
-    :param config_file: Path to the configuration file.
-    """
-    config = load_config(config_file)
-    logger.info(f"Loaded config from {config_file}")
-    
-    benchmark_runner = BenchmarkRunner(
-        model_configs=config['models'],
-        task_configs=config['tasks'],
-        evaluation_params=config['evaluation']
-    )
-    
+    # Create and run the benchmark
+    benchmark_runner = BenchmarkRunner(config)
     results = benchmark_runner.run()
-    logger.info("Benchmark completed. Saving results.")
     
-    save_results(results, config['general']['output_dir'] + '/benchmark_results.json')
+    # Print results and save them
+    logger.info(f"Benchmark results: {results}")
 
 if __name__ == "__main__":
-    config_file = sys.argv[1] if len(sys.argv) > 1 else 'config/config.yaml'
-    main(config_file)
+    main()

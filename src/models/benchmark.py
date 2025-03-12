@@ -1,51 +1,77 @@
-from typing import List, Dict, Any
+import time
+import torch
 from models.model_loader import ModelLoader
 from evaluation.evaluator import Evaluator
-import src.utils.logger as logger
-import time
+from utils.file_manager import save_results
+from utils.logger import setup_logger
+
+logger = setup_logger()
 
 class BenchmarkRunner:
     """
-    Runs benchmarks on a list of models and tasks.
-
-    :param model_configs: List of dictionaries containing model configurations.
-    :param task_configs: List of dictionaries containing task configurations.
-    :param evaluation_params: Evaluation parameters like batch size, max length, etc.
+    Class to run benchmarking tasks across multiple models and datasets using configurations.
+    
+    :param config: Dictionary containing configuration for models, tasks, metrics, etc.
     """
-
-    def __init__(self, model_configs: List[Dict[str, Any]], task_configs: List[Dict[str, Any]], evaluation_params: Dict[str, Any]):
-        self.model_configs = model_configs
-        self.task_configs = task_configs
-        self.evaluation_params = evaluation_params
+    
+    def __init__(self, config):
+        self.config = config
+        self.models = config["models"]
+        self.tasks = config["tasks"]
+        self.evaluation_metrics = config["evaluation_metrics"]
+        self.model_params = config["model_parameters"]
+        self.evaluation_params = config["evaluation"]
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.results = {}
-
+    
     def run(self):
         """
-        Runs the benchmark for all models and tasks.
+        Runs the benchmark across all models and tasks.
+        
+        :return: Dictionary containing the results for each model/task combination.
         """
-        evaluator = Evaluator(self.evaluation_params)
+        for model_config in self.models:
+            model_name = model_config["name"]
+            logger.info(f"Running benchmark for model: {model_name}")
+            model_loader = ModelLoader(model_name)
+            model, tokenizer = model_loader.load()
 
-        for model_config in self.model_configs:
-            model_loader = ModelLoader(model_config['checkpoint'], model_config['framework'])
-            model_data = model_loader.load()
-            model_name = model_config['name']
-            self.results[model_name] = {}
+            for task_config in self.tasks:
+                task_name = task_config["name"]
+                logger.info(f"Running task {task_name} for model {model_name}...")
+                
+                # Extract task-specific evaluation metrics
+                task_metrics = task_config["evaluation_metrics"]
+                
+                # Run the task and get predictions and labels (mock in this case)
+                predictions, labels = self._run_task(model, tokenizer, task_config)
+                
+                for metric in task_metrics:
+                    evaluator = Evaluator(metric=metric)
+                    evaluation_result = evaluator.evaluate(predictions, labels)
+                    
+                    if model_name not in self.results:
+                        self.results[model_name] = {}
+                    if task_name not in self.results[model_name]:
+                        self.results[model_name][task_name] = {}
+                    
+                    self.results[model_name][task_name][metric] = evaluation_result
 
-            for task_config in self.task_configs:
-                logger.info(f"Running {task_config['name']} on {model_name}")
-                task_results = self._run_task(model_data['model'], task_config)
-                evaluation_results = evaluator.evaluate(task_results)
-                self.results[model_name][task_config['name']] = evaluation_results
-
+        # Save results and generate reports
+        save_results(self.results, self.config["general"]["output_dir"])
+        
         return self.results
-
-    def _run_task(self, model, task_config: Dict[str, Any]) -> Dict[str, Any]:
+    
+    def _run_task(self, model, tokenizer, task_config):
         """
-        Run a task on the model (this is a placeholder for the real task logic).
-
-        :param model: The model to run the task with.
-        :param task_config: Configuration for the task.
-        :return: Results of the task.
+        Run a specific task (mock implementation for now).
+        
+        :param model: The loaded model.
+        :param tokenizer: The tokenizer for the model.
+        :param task_config: Configuration for the task to run (e.g., MMLU, GSM8K).
+        :return: Tuple of predictions and labels.
         """
-        time.sleep(1)  # Simulating task runtime
-        return {"accuracy": 0.85, "f1_score": 0.90}  # Mock results for illustration
+        # Placeholder logic, replace with actual task execution.
+        predictions = ["dummy_prediction"] * 10
+        labels = ["dummy_label"] * 10
+        return predictions, labels

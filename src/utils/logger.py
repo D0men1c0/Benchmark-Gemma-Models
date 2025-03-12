@@ -1,13 +1,14 @@
 import logging
-import logging.config
-import sys
 
 def setup_logger():
     """
-    Sets up the logging configuration based on config file.
+    Set up the logger with a basic configuration.
     """
-    logging.config.fileConfig('config/logging.conf')
-    logger = logging.getLogger('benchmark')
+    logger = logging.getLogger("BenchmarkLogger")
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
     return logger
-
-logger = setup_logger()
