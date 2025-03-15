@@ -1,7 +1,7 @@
-import time
 import torch
-from models.model_loader import ModelLoader
+from typing import Dict, List, Any, Tuple, Optional
 from evaluation.evaluator import Evaluator
+from models.models_factory import ModelLoaderFactory
 from utils.file_manager import save_results
 from utils.logger import setup_logger
 
@@ -10,31 +10,41 @@ logger = setup_logger()
 class BenchmarkRunner:
     """
     Class to run benchmarking tasks across multiple models and datasets using configurations.
-    
-    :param config: Dictionary containing configuration for models, tasks, metrics, etc.
     """
-    
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize the BenchmarkRunner with the provided configuration.
+
+        :param config: Dictionary containing configuration for models, tasks, metrics, etc.
+        """
         self.config = config
         self.models = config["models"]
         self.tasks = config["tasks"]
-        self.evaluation_metrics = config["evaluation_metrics"]
         self.model_params = config["model_parameters"]
         self.evaluation_params = config["evaluation"]
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.results = {}
     
-    def run(self):
+    def run(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
-        Runs the benchmark across all models and tasks.
-        
-        :return: Dictionary containing the results for each model/task combination.
+        Run the benchmark across all models and tasks.
+
+        :return: A dictionary containing the results for each model/task combination.
         """
         for model_config in self.models:
             model_name = model_config["name"]
-            logger.info(f"Running benchmark for model: {model_name}")
-            model_loader = ModelLoader(model_name)
-            model, tokenizer = model_loader.load()
+            framework = model_config["framework"]
+            quantization = model_config.get("quantization")  # Get quantization parameter
+            logger.info(f"Running benchmark for model: {model_name} using framework: {framework} with quantization: {quantization}")
+            
+            # Use the factory to get the appropriate model loader
+            model_loader = ModelLoaderFactory.get_model_loader(
+                model_name=model_name,
+                framework=framework,
+                quantization=quantization,
+                **self.model_params
+            )
+            model, tokenizer = model_loader.load(quantization=quantization)
 
             for task_config in self.tasks:
                 task_name = task_config["name"]
@@ -62,14 +72,14 @@ class BenchmarkRunner:
         
         return self.results
     
-    def _run_task(self, model, tokenizer, task_config):
+    def _run_task(self, model: Any, tokenizer: Any, task_config: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         """
         Run a specific task (mock implementation for now).
-        
+
         :param model: The loaded model.
         :param tokenizer: The tokenizer for the model.
         :param task_config: Configuration for the task to run (e.g., MMLU, GSM8K).
-        :return: Tuple of predictions and labels.
+        :return: A tuple containing predictions and labels.
         """
         # Placeholder logic, replace with actual task execution.
         predictions = ["dummy_prediction"] * 10

@@ -1,15 +1,19 @@
-import yaml
 import sys
-sys.path.append("src")
-from models.benchmark import BenchmarkRunner
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import yaml
+from models.benchmark_loader import BenchmarkRunner
 from utils.logger import setup_logger
 
 # Set up logger
 logger = setup_logger()
 
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+config_path = os.path.join(project_root, "config", "benchmark_config(1).yaml")
+
 def main():
     # Load configuration from the config file
-    with open("config/config.yaml", "r") as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
     # Create and run the benchmark
