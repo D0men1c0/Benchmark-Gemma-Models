@@ -17,14 +17,14 @@ model_parameters:
   top_k: 50
   top_p: 0.9
 models:
-- checkpoint: gemma-7b-checkpoint
+- checkpoint: google/gemma-7b
   framework: huggingface
-  name: gemma-7b
+  name: google/gemma-7b
   offloading: true
   quantization: 4bit
   size: 7B
   variant: gemma
-- checkpoint: gemma-13b-checkpoint
+- checkpoint: google/gemma-13b
   framework: huggingface
   name: gemma-13b
   offloading: true
