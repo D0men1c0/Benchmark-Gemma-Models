@@ -9,7 +9,7 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-config_path = os.path.join(project_root, "config", "benchmark_config(1).yaml")
+config_path = os.path.join(project_root, "config", "prove123.yaml")
 
 def main():
     # Load configuration from the config file

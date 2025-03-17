@@ -20,8 +20,8 @@ class BenchmarkRunner:
         self.config = config
         self.models = config["models"]
         self.tasks = config["tasks"]
-        self.model_params = config["model_parameters"]
-        self.evaluation_params = config["evaluation"]
+        self.model_params = config.get("model_parameters", {})
+        self.evaluation_params = config.get("evaluation", {})
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.results = {}
     
