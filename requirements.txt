@@ -1,3 +1,4 @@
 transformers==4.18.0
 torch==1.10.0
 pyyaml==6.0
+datasets==3.4.1

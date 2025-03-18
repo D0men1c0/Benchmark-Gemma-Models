@@ -1,9 +1,11 @@
 import torch
+import torch.nn.functional as F
 from typing import Dict, List, Any, Tuple, Optional
 from evaluation.evaluator import Evaluator
 from models.models_factory import ModelLoaderFactory
 from utils.file_manager import save_results
 from utils.logger import setup_logger
+from datasets import load_dataset
 
 logger = setup_logger()
 
@@ -49,39 +51,79 @@ class BenchmarkRunner:
             for task_config in self.tasks:
                 task_name = task_config["name"]
                 logger.info(f"Running task {task_name} for model {model_name}...")
-                
+
                 # Extract task-specific evaluation metrics
                 task_metrics = task_config["evaluation_metrics"]
-                
-                # Run the task and get predictions and labels (mock in this case)
-                predictions, labels = self._run_task(model, tokenizer, task_config)
-                
-                for metric in task_metrics:
-                    evaluator = Evaluator(metric=metric)
-                    evaluation_result = evaluator.evaluate(predictions, labels)
-                    
-                    if model_name not in self.results:
-                        self.results[model_name] = {}
-                    if task_name not in self.results[model_name]:
-                        self.results[model_name][task_name] = {}
-                    
-                    self.results[model_name][task_name][metric] = evaluation_result
 
-        # Save results and generate reports
-        save_results(self.results, self.config["general"]["output_dir"])
-        
+                # Run the task and obtain predictions and labels
+                predictions, labels = self._run_task(model, tokenizer, task_config)
+
+                # Create an Evaluator instance with evaluation parameters
+                evaluator = Evaluator(self.evaluation_params)
+
+                # Prepare task results dictionary
+                task_results = {"predictions": predictions, "labels": labels}
+
+                # Ensure task_metrics is a list of dictionaries
+                formatted_task_metrics = [{"name": metric} if isinstance(metric, str) else metric for metric in task_metrics]
+
+                # Compute the metrics
+                evaluation_results = evaluator.evaluate(task_results, formatted_task_metrics)
+
+                # Store the results
+                if model_name not in self.results:
+                    self.results[model_name] = {}
+                self.results[model_name][task_name] = evaluation_results
+
+        # Save the results to a file
+        save_results(self.results, "benchmark_results.json")
         return self.results
     
-    def _run_task(self, model: Any, tokenizer: Any, task_config: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    def _run_task(self, model: Any, tokenizer: Any, task_config: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
         """
-        Run a specific task (mock implementation for now).
+        Run a specific task using the model.
 
         :param model: The loaded model.
         :param tokenizer: The tokenizer for the model.
         :param task_config: Configuration for the task to run (e.g., MMLU, GSM8K).
         :return: A tuple containing predictions and labels.
         """
-        # Placeholder logic, replace with actual task execution.
-        predictions = ["dummy_prediction"] * 10
-        labels = ["dummy_label"] * 10
+        task_name = task_config["name"]
+        dataset_name = task_config["datasets"][0]["name"]
+        # Get the dataset configuration (e.g., 'all', 'abstract_algebra', etc.)
+        dataset_config = task_config["datasets"][0].get("config", "all")  # Default to "all" if no config is provided
+        dataset_split = task_config["datasets"][0]["splits"][0]  # Assume we use the 'train' or 'validation' split
+
+        logger.info(f"Loading dataset {dataset_name} with config {dataset_config} ({dataset_split})...")
+        # Load the dataset with the specified configuration
+        dataset = load_dataset(dataset_name, dataset_config, split=dataset_split)
+
+        predictions = []
+        labels = []
+
+        # Iterate through the dataset
+        for example in dataset:
+            
+            input_text = example.get("text", "")  # Use .get() to avoid KeyError if 'text' is missing
+            label = example.get("label", None)  # Adjust the key as needed based on dataset
+            if label is not None:
+                labels.append(label)
+
+            # Tokenize the input text
+            inputs = tokenizer(input_text, return_tensors="pt", truncation=True, padding=True).to(self.device)
+
+            if task_config["type"] == "classification":
+                with torch.no_grad():
+                    outputs = model(**inputs)
+                    logits = outputs.logits
+                    probabilities = F.softmax(logits, dim=-1)
+                    predicted_class = torch.argmax(probabilities, dim=-1).item()
+                    predictions.append(predicted_class)
+
+            elif task_config["type"] == "generation":
+                with torch.no_grad():
+                    generated_tokens = model.generate(**inputs, max_length=100)
+                    generated_text = tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+                    predictions.append(generated_text)
+
         return predictions, labels

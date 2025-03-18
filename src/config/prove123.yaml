@@ -1,0 +1,60 @@
+advanced:
+  distributed_training: false
+  enable_multi_gpu: false
+  use_tpu: false
+general:
+  experiment_name: Gemma_Benchmark_2025
+  output_dir: ./benchmarks
+  random_seed: 42
+models:
+- checkpoint: google/gemma-7b
+  framework: huggingface
+  name: google/gemma-7b
+  offloading: true
+  quantization: 4bit
+  size: 7B
+  variant: gemma
+- checkpoint: google/gemma-13b
+  framework: huggingface
+  name: google/gemma-13b
+  offloading: true
+  quantization: 4bit
+  size: 13B
+  variant: gemma
+reporting:
+  enabled: true
+  format: pdf
+  generate_visuals:
+    charts: true
+    save_plots: true
+    tables: true
+  leaderboard_enabled: true
+  output_dir: ./reports
+tasks:
+- datasets:
+  - name: cais/mmlu
+    config: all
+    splits:
+    - auxiliary_train
+    - validation
+    type: classification
+  description: Massive Multitask Language Understanding
+  evaluation_metrics:
+  - accuracy
+  - f1_score
+  - perplexity
+  name: MMLU
+  type: classification
+- datasets:
+  - name: openai/gsm8k
+    config: all
+    splits:
+    - auxiliary_train
+    - validation
+    type: generation
+  description: Math dataset with problem-solving tasks
+  evaluation_metrics:
+  - accuracy
+  - execution_time
+  name: GSM8K
+  type: generation
