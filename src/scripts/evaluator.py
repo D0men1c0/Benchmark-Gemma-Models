@@ -1,9 +1,6 @@
 from typing import Any, Dict, List
 from evaluation.metric_factory import MetricFactory
-from utils import logger
 from utils.logger import setup_logger
-
-logger = setup_logger()
 
 class Evaluator:
     """
@@ -13,6 +10,7 @@ class Evaluator:
     """
     def __init__(self, evaluation_params: Dict[str, Any]):
         self.evaluation_params = evaluation_params
+        self.logger = setup_logger()
 
     def evaluate(self, task_results: Dict[str, Any], metrics: List[Dict[str, Any]]) -> Dict[str, float]:
         """
@@ -29,7 +27,7 @@ class Evaluator:
         if not predictions or not labels:
             raise ValueError("Missing predictions/labels for evaluation")
         if len(predictions) != len(labels):
-            logger.warning("Predictions/labels length mismatch")
+            self.logger.warning("Predictions/labels length mismatch")
 
         for metric_config in metrics:
             metric_name = metric_config["name"]
@@ -39,7 +37,7 @@ class Evaluator:
                 metric_value = metric.compute(predictions, labels, **metric_options)
                 evaluation_results[metric_name] = metric_value
             except Exception as e:
-                logger.error(f"Metric {metric_name} failed: {str(e)}")
+                self.logger.error(f"Metric {metric_name} failed: {str(e)}")
                 raise
 
         return evaluation_results

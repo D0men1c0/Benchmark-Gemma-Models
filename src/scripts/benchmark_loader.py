@@ -9,19 +9,20 @@ from tasks.task_handlers_factory import TaskHandlerFactory
 from utils.file_manager import save_results
 from utils.logger import setup_logger
 
-logger = setup_logger()
-
 class BenchmarkRunner:
     """
     Class to run benchmarking tasks across multiple models and datasets using configurations.
     """
 
     def __init__(self, config: Dict[str, Any]):
+        self.logger = setup_logger()
         self.config = config
         self.models = config["models"]
         self.tasks = config["tasks"]
         self.model_params = config.get("model_parameters", {})
         self.evaluation_params = config.get("evaluation", {})
+        self.output_dir = self.config.get("general", {}).get("output_dir", "results")
+        self.reporting_format = self.config.get("reporting", {}).get("format", "json")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.results = {}
 
@@ -35,7 +36,7 @@ class BenchmarkRunner:
             model_name = model_config["name"]
             framework = model_config["framework"]
             quantization = model_config.get("quantization")  # Get quantization parameter
-            logger.info(f"Running benchmark for model: {model_name} using framework: {framework} with quantization: {quantization}")
+            self.logger.info(f"Running benchmark for model: {model_name} using framework: {framework} with quantization: {quantization}")
             
             # Use the factory to get the appropriate model loader
             model_loader = ModelLoaderFactory.get_model_loader(
@@ -48,7 +49,7 @@ class BenchmarkRunner:
 
             for task_config in self.tasks:
                 task_name = task_config["name"]
-                logger.info(f"Running task {task_name} for model {model_name}...")
+                self.logger.info(f"Running task {task_name} for model {model_name}...")
 
                 # Extract task-specific evaluation metrics
                 task_metrics = task_config["evaluation_metrics"]
@@ -74,7 +75,11 @@ class BenchmarkRunner:
                 self.results[model_name][task_name] = evaluation_results
 
         # Save the results to a file
-        save_results(self.results, "benchmark_results.json")
+        save_results(
+            results=self.results,
+            output_dir=self.output_dir,
+            format=self.reporting_format
+        )
         return self.results
 
     # Usage in BenchmarkRunner
@@ -89,7 +94,7 @@ class BenchmarkRunner:
         try:
             dataset = loader.load()
         except Exception as e:
-            logger.error(f"Failed to load dataset: {str(e)}")
+            self.logger.error(f"Failed to load dataset: {str(e)}")
             raise
         
         # Handle both regular and iterable datasets

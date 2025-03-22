@@ -1,10 +1,8 @@
 from typing import Dict, Any, Iterable, Optional, Callable
 from datasets import load_dataset as hf_load_dataset
 import os
-import logging
 from .base_dataset_loader import BaseDatasetLoader
 
-logger = logging.getLogger(__name__)
 
 class ConcreteDatasetLoader(BaseDatasetLoader):
     """Concrete implementation of dataset loader"""

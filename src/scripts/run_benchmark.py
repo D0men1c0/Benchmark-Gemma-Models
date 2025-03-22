@@ -1,5 +1,4 @@
 import argparse
-import logging
 import sys
 from pathlib import Path
 from typing import Dict, Any
@@ -8,7 +7,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import setup_logger
 from .benchmark_loader import BenchmarkRunner
 
-logger = logging.getLogger(__name__)
+logger = setup_logger()
 
 def validate_config(config: Dict[str, Any]) -> bool:
     """Basic configuration validation"""

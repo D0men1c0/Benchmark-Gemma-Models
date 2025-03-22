@@ -1,10 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, TFAutoModelForCausalLM
 from typing import Tuple, Any, Optional
-from logging import getLogger
-
 from .base_model_loader import BaseModelLoader
-
-logger = getLogger(__name__)
+from utils.logger import setup_logger
 
 class HuggingFaceModelLoader(BaseModelLoader):
     """
@@ -51,6 +48,7 @@ class PyTorchModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
+        self.logger = setup_logger()
         self.model_name = model_name
         self.kwargs = kwargs
 
@@ -62,7 +60,7 @@ class PyTorchModelLoader(BaseModelLoader):
         :return: A tuple containing the model and tokenizer.
         """
         if quantization == "4bit" or quantization == "8bit":
-            logger.warning(f"Quantization ({quantization}) is not yet supported for PyTorch models in this implementation.")
+            self.logger.warning(f"Quantization ({quantization}) is not yet supported for PyTorch models in this implementation.")
         
         model = AutoModelForCausalLM.from_pretrained(self.model_name, **self.kwargs)
         tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -79,6 +77,7 @@ class TensorFlowModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
+        self.logger = setup_logger()
         self.model_name = model_name
         self.kwargs = kwargs
 
@@ -90,7 +89,7 @@ class TensorFlowModelLoader(BaseModelLoader):
         :return: A tuple containing the model and tokenizer.
         """
         if quantization:
-            logger.warning(f"Quantization ({quantization}) is not yet supported for TensorFlow models.")
+            self.logger.warning(f"Quantization ({quantization}) is not yet supported for TensorFlow models.")
         
         model = TFAutoModelForCausalLM.from_pretrained(self.model_name, **self.kwargs)
         tokenizer = AutoTokenizer.from_pretrained(self.model_name)

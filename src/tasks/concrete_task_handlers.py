@@ -2,9 +2,6 @@ import torch
 import torch.nn.functional as F
 from typing import Dict, Any, Tuple, Optional
 from .base_task_handler import TaskHandler
-from utils.logger import setup_logger
-
-logger = setup_logger()
 
 class ClassificationTaskHandler(TaskHandler):
     """Handler for classification tasks."""
