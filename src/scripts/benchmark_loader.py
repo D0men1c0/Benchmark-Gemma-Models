@@ -1,11 +1,13 @@
 import torch
-import torch.nn.functional as F
-from typing import Dict, List, Any, Tuple, Optional
-from evaluation.evaluator import Evaluator
+from typing import Dict, List, Any, Tuple
+from datasets import Dataset, IterableDataset
+import tqdm
+from datasets.dataset_factory import DatasetFactory
+from .evaluator import Evaluator
 from models.models_factory import ModelLoaderFactory
+from tasks.task_handlers_factory import TaskHandlerFactory
 from utils.file_manager import save_results
 from utils.logger import setup_logger
-from datasets import load_dataset
 
 logger = setup_logger()
 
@@ -13,12 +15,8 @@ class BenchmarkRunner:
     """
     Class to run benchmarking tasks across multiple models and datasets using configurations.
     """
-    def __init__(self, config: Dict[str, Any]):
-        """
-        Initialize the BenchmarkRunner with the provided configuration.
 
-        :param config: Dictionary containing configuration for models, tasks, metrics, etc.
-        """
+    def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.models = config["models"]
         self.tasks = config["tasks"]
@@ -26,7 +24,7 @@ class BenchmarkRunner:
         self.evaluation_params = config.get("evaluation", {})
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.results = {}
-    
+
     def run(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
         Run the benchmark across all models and tasks.
@@ -78,52 +76,45 @@ class BenchmarkRunner:
         # Save the results to a file
         save_results(self.results, "benchmark_results.json")
         return self.results
-    
-    def _run_task(self, model: Any, tokenizer: Any, task_config: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
-        """
-        Run a specific task using the model.
 
-        :param model: The loaded model.
-        :param tokenizer: The tokenizer for the model.
-        :param task_config: Configuration for the task to run (e.g., MMLU, GSM8K).
-        :return: A tuple containing predictions and labels.
-        """
-        task_name = task_config["name"]
-        dataset_name = task_config["datasets"][0]["name"]
-        # Get the dataset configuration (e.g., 'all', 'abstract_algebra', etc.)
-        dataset_config = task_config["datasets"][0].get("config", "all")  # Default to "all" if no config is provided
-        dataset_split = task_config["datasets"][0]["splits"][0]  # Assume we use the 'train' or 'validation' split
+    # Usage in BenchmarkRunner
+    def _run_task(
+        self, model: Any, tokenizer: Any, task_config: Dict[str, Any]
+    ) -> Tuple[List[Any], List[Any]]:
+        
+        # Load dataset configuration
+        dataset_config = task_config["datasets"][0]
+        loader = DatasetFactory.from_config(dataset_config)
+        
+        try:
+            dataset = loader.load()
+        except Exception as e:
+            logger.error(f"Failed to load dataset: {str(e)}")
+            raise
+        
+        # Handle both regular and iterable datasets
+        if isinstance(dataset, (Dataset, IterableDataset)):
+            data_iter = dataset.iter(batch_size=1) if loader.streaming else dataset
+        else:
+            data_iter = dataset  # Custom iterables
 
-        logger.info(f"Loading dataset {dataset_name} with config {dataset_config} ({dataset_split})...")
-        # Load the dataset with the specified configuration
-        dataset = load_dataset(dataset_name, dataset_config, split=dataset_split)
+        handler = TaskHandlerFactory.get_handler(
+            task_config["type"], model, tokenizer, self.device
+        )
 
         predictions = []
         labels = []
 
-        # Iterate through the dataset
-        for example in dataset:
-            
-            input_text = example.get("text", "")  # Use .get() to avoid KeyError if 'text' is missing
-            label = example.get("label", None)  # Adjust the key as needed based on dataset
+        for batch in tqdm(data_iter, desc="Processing examples"):
+            # Handle batch unpacking for streaming
+            if loader.streaming:
+                example = {k: v[0] for k, v in batch.items()}  # Unpack first item in batch
+            else:
+                example = batch
+                
+            prediction, label = handler.process_example(example)
+            predictions.append(prediction)
             if label is not None:
                 labels.append(label)
-
-            # Tokenize the input text
-            inputs = tokenizer(input_text, return_tensors="pt", truncation=True, padding=True).to(self.device)
-
-            if task_config["type"] == "classification":
-                with torch.no_grad():
-                    outputs = model(**inputs)
-                    logits = outputs.logits
-                    probabilities = F.softmax(logits, dim=-1)
-                    predicted_class = torch.argmax(probabilities, dim=-1).item()
-                    predictions.append(predicted_class)
-
-            elif task_config["type"] == "generation":
-                with torch.no_grad():
-                    generated_tokens = model.generate(**inputs, max_length=100)
-                    generated_text = tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
-                    predictions.append(generated_text)
 
         return predictions, labels
