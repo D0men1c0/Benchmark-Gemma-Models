@@ -1,42 +1,47 @@
-from evaluation.accuracy import AccuracyMetric
-from evaluation.base_model_evaluator import BaseMetric
-from evaluation.bleu_score import BLEUScoreMetric
-from evaluation.exact_match import ExactMatchMetric
-from evaluation.f1_score import F1ScoreMetric
-from evaluation.perplexity import PerplexityMetric
-from evaluation.precision import PrecisionMetric
-from evaluation.recall import RecallMetric
-from evaluation.rouge_score import ROUGEScoreMetric
-
+from typing import List
+from torch import Type
+from .base_metrics import BaseMetric
+from .concrete_metrics import AccuracyMetric, PrecisionMetric, RecallMetric, F1ScoreMetric, PerplexityMetric, ExactMatchMetric, BLEUScoreMetric, ROUGEScoreMetric
 
 class MetricFactory:
     """
-    Factory class to create evaluation metrics.
+    Factory class to create evaluation metrics using dictionary mapping.
     """
-    @staticmethod
-    def get_metric(metric_name: str) -> BaseMetric:
-        """
-        Get the metric instance based on the metric name.
+    _METRIC_REGISTRY: dict[str, type[BaseMetric]] = {
+        "accuracy": AccuracyMetric,
+        "precision": PrecisionMetric,
+        "recall": RecallMetric,
+        "f1_score": F1ScoreMetric,
+        "perplexity": PerplexityMetric,
+        "exact_match": ExactMatchMetric,
+        "bleu": BLEUScoreMetric,
+        "rouge": ROUGEScoreMetric,
+    }
 
-        :param metric_name: Name of the metric (e.g., "accuracy", "f1_score").
-        :return: An instance of the metric.
-        :raises ValueError: If the metric is not supported.
+    @classmethod
+    def register_metric(cls, name: str, metric_class: Type[BaseMetric]):
+        """Allow dynamic registration of new metrics"""
+        cls._METRIC_REGISTRY[name.lower()] = metric_class
+
+    @classmethod
+    def list_available(cls) -> List[str]:
+        """Return list of registered metrics"""
+        return list(cls._METRIC_REGISTRY.keys())
+
+    @classmethod
+    def get_metric(cls, metric_name: str) -> BaseMetric:
         """
-        if metric_name == "accuracy":
-            return AccuracyMetric()
-        elif metric_name == "precision":
-            return PrecisionMetric()
-        elif metric_name == "recall":
-            return RecallMetric()
-        elif metric_name == "f1_score":
-            return F1ScoreMetric()
-        elif metric_name == "perplexity":
-            return PerplexityMetric()
-        elif metric_name == "exact_match":
-            return ExactMatchMetric()
-        elif metric_name == "bleu":
-            return BLEUScoreMetric()
-        elif metric_name == "rouge":
-            return ROUGEScoreMetric()
-        else:
-            raise ValueError(f"Unsupported metric: {metric_name}")
+        Get the metric instance using dictionary lookup.
+        
+        :param metric_name: Name of the metric to instantiate
+        :return: Metric instance
+        :raises ValueError: For unsupported metrics
+        """
+        metric_class = cls._METRIC_REGISTRY.get(metric_name.lower())
+        if not metric_class:
+            available = ", ".join(cls._METRIC_REGISTRY.keys())
+            raise ValueError(
+                f"Unsupported metric: {metric_name}. "
+                f"Available metrics: {available}"
+            )
+        return metric_class()
