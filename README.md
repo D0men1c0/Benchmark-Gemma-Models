@@ -1,15 +1,52 @@
-# Gemma Benchmarking Suite
+# Gemma Model Benchmark Suite
 
-## Overview
-This project is designed to benchmark the performance of various language models (like Gemma, Llama, etc.) on different NLP tasks. The framework is modular and supports multiple models, tasks, and evaluation metrics.
+[![Python: 3.12](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
-## Structure
-- `config/`: Contains configuration files for the benchmarking process.
-- `models/`: Classes responsible for loading models and running benchmarks.
-- `evaluation/`: Contains evaluation logic for processing results.
-- `utils/`: Utility functions for file management and logging.
-- `scripts/`: Main script to execute the benchmarks.
-- `results/`: Directory for storing benchmark results.
+A modular framework for benchmarking Gemma models against academic benchmarks (MMLU, GSM8K) and custom datasets. Designed with separation of concerns and extensibility at its core.
+
+---
+
+## 🧱 Modular Architecture
+
+### Directory Structure
+```bash
+📦 src
+├── 📂 config/                 # Configuration management
+│   ├── benchmark_config.yaml  # Main benchmark parameters
+│   ├── logging.conf           # Logging configurations
+│   └── prove123.yaml          # Example task-specific config
+│
+├── 📂 datasets/               # Dataset handling
+│   ├── base_dataset_loader.py # Abstract dataset interface
+│   ├── concrete_dataset_loader.py # Hub/S3/local implementations
+│   └── dataset_factory.py     # Dataset loader factory
+│
+├── 📂 evaluation/             # Metrics & analysis
+│   ├── base_metrics.py        # Metric interface
+│   ├── concrete_metrics.py    # 15+ implemented metrics
+│   └── metric_factory.py      # Metric computation orchestration
+│
+├── 📂 models/                 # Model management
+│   ├── base_model_loader.py   # Abstract model interface
+│   ├── concrete_models.py     # Hugging Face/TensorFlow/PyTorch loading
+│   └── models_factory.py      # Model loading factory
+│
+├── 📂 scripts/                # Execution workflows
+│   ├── benchmark_loader.py    # Core benchmarking logic
+│   ├── evaluator.py           # Results analysis
+│   └── run_benchmark.py       # Main entrypoint
+│
+├── 📂 tasks/                  # Task-specific logic
+│   ├── base_task_handler.py   # Task interface
+│   ├── concrete_task_handlers.py # Classification/Generation
+│   └── task_handlers_factory.py # Task orchestration
+│
+├── 📂 utils/                  # Shared utilities
+│   ├── file_manager.py        # Multi-format I/O (JSON/YAML/CSV/PDF)
+│   └── logger.py              # Unified logging system
+│
+├── generate_default_config.py # Config generator
+```
 
 ## Installation
 ```bash
