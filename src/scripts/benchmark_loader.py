@@ -1,8 +1,9 @@
 import torch
 from typing import Dict, List, Any, Tuple
 from datasets import Dataset, IterableDataset
-import tqdm
-from datasets.dataset_factory import DatasetFactory
+from tqdm import tqdm
+from dataset.dataset_factory import DatasetFactory
+from torch.utils.data import DataLoader
 from .evaluator import Evaluator
 from models.models_factory import ModelLoaderFactory
 from tasks.task_handlers_factory import TaskHandlerFactory
@@ -17,8 +18,9 @@ class BenchmarkRunner:
     def __init__(self, config: Dict[str, Any]):
         self.logger = setup_logger()
         self.config = config
-        self.models = config["models"]
-        self.tasks = config["tasks"]
+        self.models = config.get("models", [])
+        self.advanced = config.get("advanced", {})
+        self.tasks = config.get("tasks", [])
         self.model_params = config.get("model_parameters", {})
         self.evaluation_params = config.get("evaluation", {})
         self.output_dir = self.config.get("general", {}).get("output_dir", "results")
@@ -45,6 +47,7 @@ class BenchmarkRunner:
                 quantization=quantization,
                 **self.model_params
             )
+            self.logger.info(f"Loaded model: {model_loader} using {framework} framework")
             model, tokenizer = model_loader.load(quantization=quantization)
 
             for task_config in self.tasks:
@@ -82,10 +85,17 @@ class BenchmarkRunner:
         )
         return self.results
 
-    # Usage in BenchmarkRunner
+
     def _run_task(
         self, model: Any, tokenizer: Any, task_config: Dict[str, Any]
     ) -> Tuple[List[Any], List[Any]]:
+        """"
+        Run a task using the provided model and tokenizer."
+
+        :param model: Model instance to use for the task.
+        :param tokenizer: Tokenizer instance to use for the task.
+        :param task_config: Task configuration dictionary.
+        """
         
         # Load dataset configuration
         dataset_config = task_config["datasets"][0]
@@ -103,23 +113,42 @@ class BenchmarkRunner:
         else:
             data_iter = dataset  # Custom iterables
 
+        if isinstance(data_iter, IterableDataset):
+            iterable_dataset = data_iter
+        else:
+            iterable_dataset = CustomIterableDataset(data_iter)
+
+        # Initialize the task handler based on task type
         handler = TaskHandlerFactory.get_handler(
-            task_config["type"], model, tokenizer, self.device
+            task_config["type"], model, tokenizer, self.device, self.advanced
         )
 
         predictions = []
         labels = []
 
-        for batch in tqdm(data_iter, desc="Processing examples"):
-            # Handle batch unpacking for streaming
+        # Use DataLoader for batch processing
+        data_loader = DataLoader(iterable_dataset, batch_size=self.advanced.get("batch_size", 32), shuffle=True)
+
+        for batch in tqdm(data_loader, desc="Processing examples", unit="batch"):
             if loader.streaming:
                 example = {k: v[0] for k, v in batch.items()}  # Unpack first item in batch
             else:
                 example = batch
-                
-            prediction, label = handler.process_example(example)
-            predictions.append(prediction)
-            if label is not None:
-                labels.append(label)
+            
+            # Process a batch of examples
+            predictions_batch, labels_batch = handler.process_batch(example)
+            predictions.extend(predictions_batch)
+            if labels_batch is not None:
+                labels.extend(labels_batch)
 
         return predictions, labels
+    
+
+class CustomIterableDataset(IterableDataset):
+    """Custom IterableDataset to handle custom data iterators."""
+
+    def __init__(self, data_iter):
+        self.data_iter = data_iter
+
+    def __iter__(self):
+        return iter(self.data_iter)

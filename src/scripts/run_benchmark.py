@@ -5,7 +5,7 @@ from typing import Dict, Any
 import yaml
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import setup_logger
-from .benchmark_loader import BenchmarkRunner
+from scripts.benchmark_loader import BenchmarkRunner
 
 logger = setup_logger()
 
@@ -40,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("config/prove123.yaml"),
+        default=Path(__file__).parent.parent / "config" / "prove123.yaml",
         help="Path to config file",
     )
     parser.add_argument(
@@ -56,7 +56,7 @@ def main() -> None:
     args = parse_args()
     
     # Initialize logging
-    setup_logger(level=args.log_level)
+    logger = setup_logger()
     
     try:
         logger.info(f"Loading config from: {args.config}")

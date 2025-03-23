@@ -2,6 +2,9 @@ from typing import Any, Optional, Type, Dict
 
 from .base_model_loader import BaseModelLoader
 from .concrete_models import HuggingFaceModelLoader, PyTorchModelLoader, TensorFlowModelLoader
+from utils.logger import setup_logger
+
+logger = setup_logger()
 
 class ModelLoaderFactory:
     """
@@ -42,7 +45,7 @@ class ModelLoaderFactory:
         """
         framework = framework.lower()
         loader_class = cls._LOADER_REGISTRY.get(framework)
-        
+        logger.info(f"Loading model using {framework} framework")
         if not loader_class:
             available = ", ".join(cls._LOADER_REGISTRY.keys())
             raise ValueError(
