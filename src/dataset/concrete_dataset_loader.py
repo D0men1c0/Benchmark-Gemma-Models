@@ -18,8 +18,7 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         if not isinstance(name, str) or len(name.strip()) == 0:
             raise ValueError("Invalid dataset name")
             
-        valid_splits = ["train", "validation", "test", 
-                       "train+validation", "all"]
+        valid_splits = ['test', 'validation', 'dev', 'auxiliary_train']
         if split not in valid_splits:
             raise ValueError(f"Invalid split: {split}. Valid: {valid_splits}")
         

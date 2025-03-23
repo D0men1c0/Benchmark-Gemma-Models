@@ -11,8 +11,8 @@ class DatasetFactory:
             name=config["name"],
             source_type=config.get("source_type", "hf_hub"),
             config=config.get("config"),
-            split=config.get("split", "train"),
+            split=config.get("split", "validation"),
             data_dir=config.get("data_dir"),
-            streaming=config.get("streaming", False),
+            streaming=config.get("streaming", True),
             **config.get("loader_args", {})
         )
