@@ -12,7 +12,7 @@ class TaskHandlerFactory:
 
     @classmethod
     def get_handler(
-        cls, task_type: str, model: Any, tokenizer: Any, device: str
+        cls, task_type: str, model: Any, tokenizer: Any, device: str, advanced_args: Any = None
     ) -> TaskHandler:
         """
         Get the appropriate task handler for the given task type.
@@ -21,9 +21,10 @@ class TaskHandlerFactory:
         :param model: Loaded model instance.
         :param tokenizer: Loaded tokenizer instance.
         :param device: Device to run the model on.
+        :param advanced_args: Additional arguments for the task handler.
         :return: Initialized TaskHandler instance.
         """
         handler_class = cls._handlers.get(task_type)
         if not handler_class:
             raise ValueError(f"No handler registered for task type: {task_type}")
-        return handler_class(model, tokenizer, device)
+        return handler_class(model, tokenizer, device, advanced_args)
