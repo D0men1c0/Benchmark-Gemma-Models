@@ -19,7 +19,7 @@ class MetricFactory:
     }
 
     @classmethod
-    def register_metric(cls, name: str, metric_class: Type[BaseMetric]):
+    def register_metric(cls, name: str, metric_class: "Type[BaseMetric]"):
         """Allow dynamic registration of new metrics"""
         cls._METRIC_REGISTRY[name.lower()] = metric_class
 
