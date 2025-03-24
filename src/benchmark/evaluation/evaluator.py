@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from evaluation.metric_factory import MetricFactory
+from .metrics.metric_factory import MetricFactory
 from utils.logger import setup_logger
 
 class Evaluator:

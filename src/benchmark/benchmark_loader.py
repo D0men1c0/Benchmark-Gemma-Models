@@ -2,12 +2,12 @@ import torch
 from typing import Dict, List, Any, Tuple
 from datasets import Dataset, IterableDataset
 from tqdm import tqdm
-from dataset.dataset_factory import DatasetFactory
+from .dataset.dataset_factory import DatasetFactory
 from torch.utils.data import DataLoader
-from .evaluator import Evaluator
-from models.models_factory import ModelLoaderFactory
-from tasks.task_handlers_factory import TaskHandlerFactory
-from utils.file_manager import save_results
+from .evaluation.evaluator import Evaluator
+from .models.models_factory import ModelLoaderFactory
+from .tasks.task_handlers_factory import TaskHandlerFactory
+from .reporting.file_manager import save_results
 from utils.logger import setup_logger
 
 class BenchmarkRunner:
@@ -127,7 +127,7 @@ class BenchmarkRunner:
         labels = []
 
         # Use DataLoader for batch processing
-        data_loader = DataLoader(iterable_dataset, batch_size=self.advanced.get("batch_size", 32), shuffle=True)
+        data_loader = DataLoader(iterable_dataset, batch_size=self.advanced.get("batch_size", 32), shuffle=False)
 
         for batch in tqdm(data_loader, desc="Processing examples", unit="batch"):
             if loader.streaming:

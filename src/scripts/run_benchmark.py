@@ -5,7 +5,7 @@ from typing import Dict, Any
 import yaml
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import setup_logger
-from scripts.benchmark_loader import BenchmarkRunner
+from benchmark.benchmark_loader import BenchmarkRunner
 
 logger = setup_logger()
 

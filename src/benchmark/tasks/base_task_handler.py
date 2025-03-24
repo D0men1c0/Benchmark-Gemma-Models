@@ -36,9 +36,6 @@ class TaskHandler(ABC):
             import torch_xla.core.xla_model as xm
             self.device = xm.xla_device()
             '''
-        
-        if (self.generate_max_length or self.skip_special_tokens) and (self.padding or self.truncation):
-            raise ValueError("Padding/truncation and generation parameters cannot be used together.")
 
     @abstractmethod
     def process_example(self, example: Dict[str, Any]) -> Tuple[Any, Optional[Any]]:
