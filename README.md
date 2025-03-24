@@ -2,7 +2,10 @@
 
 [![Python: 3.12](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
-A modular framework for benchmarking Gemma models against academic benchmarks (MMLU, GSM8K) and custom datasets. Designed with separation of concerns and extensibility at its core.
+A comprehensive benchmarking suite developed for **Google Summer of Code 2025** with **DeepMind**, designed to evaluate and compare **Gemma models** on a wide range of NLP tasks and datasets.
+
+## Overview  
+This framework offers a robust, automated solution to assess the performance of **Gemma models**, providing insights across diverse tasks including both academic benchmarks and custom datasets. The system emphasizes scalability, extensibility, and ease of use, ensuring researchers can efficiently measure and compare model performance.
 
 ---
 
@@ -121,6 +124,8 @@ python scripts/run_benchmark.py \
 | MetricFactory           | Computes evaluation metrics (rouge, perplexity, execution time, bleu, etc.)        | `src/benchmark/evaluation/metrics/`   |
 | SaveResults             | Saves final benchmark results in multiple formats (JSON, CSV, PDF)                | `src/benchmark/reporting/`            |
 
+---
+
 ## Key Features
 
 - **Advanced Configuration Management**  
@@ -143,6 +148,18 @@ python scripts/run_benchmark.py \
 
 - **Factory Pattern Implementation**  
   By utilizing the factory design pattern throughout the system, I ensure a high level of abstraction and decoupling between components. This not only simplifies the process of extending the system with new functionality but also improves code readability and maintainability.
+
+---
+
+## Why Use This Benchmark Suite?  
+
+🔹 **Extensible Design** — Built with modular components and factory patterns to simplify future enhancements.  
+🔹 **Multi-Framework Support** — Compatible with **Hugging Face**, **TensorFlow**, and **PyTorch** models, including quantized versions for efficient evaluation.  
+🔹 **Advanced Evaluation Metrics** — Supports diverse metrics such as **accuracy**, **F1 score**, **perplexity**, **execution time**, and more.  
+🔹 **Flexible Task Management** — Handles both **classification** and **generation** tasks with dynamic batch sizing for optimal performance.  
+🔹 **Robust Reporting** — Produces results in multiple formats (**JSON**, **CSV**, **PDF**) and offers visual summaries for better insights.  
+
+---
 
 ## Next Steps
 
