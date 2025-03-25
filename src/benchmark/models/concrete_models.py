@@ -1,3 +1,4 @@
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TFAutoModelForCausalLM
 from typing import Tuple, Any, Optional
 from .base_model_loader import BaseModelLoader
@@ -28,11 +29,17 @@ class HuggingFaceModelLoader(BaseModelLoader):
         self.logger.info(f"Loading model: {self.model_name} with quantization: {quantization}")
         if quantization == "4bit":
             from transformers import BitsAndBytesConfig
-            quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+            quantization_config = BitsAndBytesConfig(load_in_4bit=True, 
+                                                     bnb_4bit_compute_dtype=torch.float16, 
+                                                     bnb_4bit_quant_type="nf4",
+                                                     bnb_4bit_use_double_quant=True)
             self.kwargs["quantization_config"] = quantization_config
         elif quantization == "8bit":
             from transformers import BitsAndBytesConfig
-            quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+            quantization_config = BitsAndBytesConfig(load_in_8bit=True,
+                                                     bnb_8bit_compute_dtype=torch.float16,
+                                                     bnb_8bit_quant_type="dynamic",
+                                                     bnb_8bit_use_double_quant=True)
             self.kwargs["quantization_config"] = quantization_config
 
         self.kwargs.pop("quantization", None)
