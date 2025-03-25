@@ -22,8 +22,13 @@ class TaskHandler(ABC):
         self.use_tpu = advanced_args.get("use_tpu", False) if advanced_args else False
         self.truncation = advanced_args.get("truncation", True) if advanced_args else True
         self.padding = advanced_args.get("padding", True) if advanced_args else True
-        self.generate_max_length = advanced_args.get("generate_max_length", 128) if advanced_args else 128
+        self.generate_max_length = advanced_args.get("generate_max_length", 512) if advanced_args else 512
         self.skip_special_tokens = advanced_args.get("skip_special_tokens", True) if advanced_args else True
+        self.max_new_tokens = advanced_args.get("max_new_tokens", 50) if advanced_args else 50
+        self.num_beams = advanced_args.get("num_beams", 1) if advanced_args else 1
+        self.do_sample = advanced_args.get("do_sample", False) if advanced_args else False
+        self.use_cache = advanced_args.get("use_cache", False) if advanced_args else False
+        self.clean_up_tokenization_spaces = advanced_args.get("clean_up_tokenization_spaces", True) if advanced_args else True
         
         # Handling multi-GPU
         if self.use_multi_gpu:
@@ -46,7 +51,8 @@ class TaskHandler(ABC):
         :return: Tuple containing the prediction and label (label may be None).
         """
         pass
-
+    
+    @abstractmethod
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[list, list]:
         """
         Process a batch of examples (texts and labels) efficiently.

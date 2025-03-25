@@ -14,13 +14,6 @@ models:
   quantization: 4bit
   size: 7B
   variant: gemma
-- checkpoint: google/gemma-13b
-  framework: huggingface
-  name: google/gemma-13b
-  offloading: true
-  quantization: 4bit
-  size: 13B
-  variant: gemma
 reporting:
   enabled: true
   format: pdf
@@ -37,7 +30,7 @@ tasks:
     splits:
     - auxiliary_train
     - validation
-    type: classification
+    type: generation
   description: Massive Multitask Language Understanding
   evaluation_metrics:
   - accuracy
