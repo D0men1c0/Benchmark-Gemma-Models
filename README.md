@@ -131,6 +131,13 @@ python scripts/run_benchmark.py \
 - **Advanced Configuration Management**  
   This system leverages a comprehensive YAML configuration file (`benchmark_config.yaml`) that enables users to specify advanced settings such as distributed training, multi-GPU/TPU utilization, and custom parameters (e.g., truncation, padding, max item generation). This flexible setup allows for fine-tuning experiments without changing the core code.
 
+- **Comprehensive Evaluation & Reporting**  
+  Combines classic NLP metrics with cutting-edge LLM evaluation ([2404.09135](https://arxiv.org/html/2404.09135v1)):  
+  - **Core Metrics**: Accuracy, F1, BLEU, ROUGE  
+  - **Advanced Generation**: BERTScore, BLEURT, Perplexity  
+  - **Safety/Diversity**: Toxicity detection, Distinct-n, Entropy
+  - **Composite Scoring**: Configurable weighted combinations
+
 - **Modular & Scalable Architecture**  
   The architecture is designed around modular components with clear separations of concern. Factories such as `ModelLoaderFactory`, `DataloaderFactory`, `TaskHandlerFactory`, and `MetricFactory` abstract the implementation details, ensuring that new models, datasets, tasks, or metrics can be easily integrated. This pattern promotes scalability and long-term maintainability.
 
@@ -153,11 +160,11 @@ python scripts/run_benchmark.py \
 
 ## Why Use This Benchmark Suite?  
 
-🔹 **Extensible Design** — Built with modular components and factory patterns to simplify future enhancements.  
-🔹 **Multi-Framework Support** — Compatible with **Hugging Face**, **TensorFlow**, and **PyTorch** models, including quantized versions for efficient evaluation.  
-🔹 **Advanced Evaluation Metrics** — Supports diverse metrics such as **accuracy**, **F1 score**, **perplexity**, **execution time**, and more.  
-🔹 **Flexible Task Management** — Handles both **classification** and **generation** tasks with dynamic batch sizing for optimal performance.  
-🔹 **Robust Reporting** — Produces results in multiple formats (**JSON**, **CSV**, **PDF**) and offers visual summaries for better insights.  
+- **Extensible Design** — Built with modular components and factory patterns to simplify future enhancements.  
+- **Multi-Framework Support** — Compatible with **Hugging Face**, **TensorFlow**, and **PyTorch** models, including quantized versions for efficient evaluation.  
+- **Advanced Evaluation Metrics** — Supports diverse metrics such as **accuracy**, **F1 score**, **perplexity**, **execution time**, and more.  
+- **Flexible Task Management** — Handles both **classification** and **generation** tasks with dynamic batch sizing for optimal performance.  
+- **Robust Reporting** — Produces results in multiple formats (**JSON**, **CSV**, **PDF**) and offers visual summaries for better insights.  
 
 ---
 
@@ -174,6 +181,11 @@ python scripts/run_benchmark.py \
 - **Enhance Task Handling for Generation**  
   - Refine the generation task handlers to improve output quality, reduce errors, and optimize batch processing.
   - Explore incorporating advanced techniques like beam search, temperature sampling, or top-k/top-p filtering to enhance generation capabilities.
+
+- **Cloud Integration**  
+  - Add support for cloud-based benchmarking
+  - Implement distributed evaluation across multiple nodes  
+  - Develop auto-scaling capabilities for large experiments  
 
 - **Dashboard Integration**  
   - Develop an interactive dashboard to visualize benchmark results and system performance in real-time.
