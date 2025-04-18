@@ -30,3 +30,4 @@ torchvision==0.20.1+cu121
 sentence_transformers==4.0.1
 sequeseqeval==1.2.2
 bert-score==0.3.10
+pydantic==2.11.3
