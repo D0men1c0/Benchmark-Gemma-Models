@@ -1,7 +1,6 @@
 # ============================
 # General Configuration
 # ============================
-
 general:
   experiment_name: "Gemma_Benchmark_2025"
   output_dir: "./benchmarks"
@@ -10,90 +9,96 @@ general:
 # ============================
 # Benchmark Tasks Configuration
 # ============================
-
 tasks:
   - name: "MMLU"
-    type: "classification"
+    type: "classification" # Task type
     description: "Massive Multitask Language Understanding"
     datasets:
-      - name: "mmlu"
-        type: "classification"
-        splits: ["train", "validation"]
-    evaluation_metrics: [accuracy, f1_score, perplexity]
+      - name: "cais/mmlu"
+        source_type: "hf_hub" # Assuming Hugging Face Hub
+        config: "all" # Specify config if needed, e.g., 'all' for MMLU
+        split: "validation" # Or "test", "train" etc.
+    evaluation_metrics:
+      - name: accuracy
+      - name: f1_score
+        # options: { average: 'weighted' } # Example options
+      - name: perplexity
 
   - name: "GSM8K"
-    type: "generation"
+    type: "generation" # Task type
     description: "Math dataset with problem-solving tasks"
     datasets:
       - name: "gsm8k"
-        type: "generation"
-        splits: ["train", "validation"]
-    evaluation_metrics: [accuracy, execution_time]
+        source_type: "hf_hub" # Assuming Hugging Face Hub
+        config: "main" # Specify config if needed, e.g., 'main' for GSM8K
+        split: "test" # Or "train"
+    evaluation_metrics:
+      - name: accuracy
+      # - name: execution_time # Note: Requires implementation and registration
 
 # ============================
 # Models Configuration
 # ============================
-
 models:
-  - name: "gemma-7b"
+  - name: "gemma-7b" # User-defined name for results reporting
     variant: "gemma"
     size: "7B"
     framework: "huggingface"
-    checkpoint: "gemma-7b-checkpoint"
+    checkpoint: "google/gemma-7b" # Actual HF model ID or path
     quantization: "4bit"
     offloading: true
 
-  - name: "gemma-13b"
+  - name: "gemma-13b" # User-defined name
     variant: "gemma"
     size: "13B"
     framework: "huggingface"
-    checkpoint: "gemma-13b-checkpoint"
+    checkpoint: "google/gemma-13b" # Actual HF model ID or path
     quantization: "8bit"
     offloading: true
 
-  - name: "llama-2-7b"
+  - name: "llama-2-7b" # User-defined name
     variant: "llama"
     size: "7B"
     framework: "huggingface"
-    checkpoint: "llama-2-7b-checkpoint"
+    checkpoint: "meta-llama/Llama-2-7b-hf" # Example actual HF ID
     quantization: "4bit"
     offloading: true
 
-  - name: "mistral-7b"
+  - name: "mistral-7b" # User-defined name
     variant: "mistral"
     size: "7B"
     framework: "huggingface"
-    checkpoint: "mistral-7b-checkpoint"
+    checkpoint: "mistralai/Mistral-7B-v0.1" # Example actual HF ID
     quantization: "4bit"
     offloading: true
 
 # ============================
 # Model Parameters Configuration
 # ============================
-
 model_parameters:
-  batch_size: 4
-  max_input_length: 512
-  max_output_length: 512
-  temperature: 0.7
-  top_p: 0.9
-  top_k: 50
+  # Parameters for model loading/inference (e.g., generation config)
+  # batch_size: 4 # Suggest moving batch_size to 'advanced' section
+  max_input_length: 512 # Note: Actual truncation might depend on TaskHandler logic
+  max_output_length: 512 # Note: Actual generation length often controlled by TaskHandler args
+  #temperature: 0.7
+  #top_p: 0.9
+  #top_k: 50
+  # Consider moving TaskHandler params like max_new_tokens, num_beams here if reorganized
 
 # ============================
 # Evaluation Configuration
 # ============================
-
 evaluation:
-  batch_size: 16
+  # Parameters specific to the evaluation process itself (if any)
+  # batch_size: 16 # Only if evaluation needs a *different* batch size than inference
   log_interval: 100
 
 # ============================
 # Results and Reporting
 # ============================
-
 reporting:
   enabled: true
-  format: "pdf"
+  format: "pdf" # Or "json", "csv", etc.
   leaderboard_enabled: true
   generate_visuals:
     charts: true
@@ -102,10 +107,20 @@ reporting:
   output_dir: "./reports"
 
 # ============================
-# Advanced Settings
+# Advanced Settings (Runtime/Environment)
 # ============================
-
 advanced:
   enable_multi_gpu: false
   use_tpu: false
   distributed_training: false
+  batch_size: 32 # Main batch size for DataLoader/inference
+  # TaskHandler/Tokenizer/Generate parameters could be moved from ModelParamsConfig or defined here
+  truncation: true
+  padding: true
+  generate_max_length: 512 # Max length potentially used by tokenizer/generator
+  skip_special_tokens: true
+  max_new_tokens: 50 # Max tokens to generate *new*
+  num_beams: 1
+  do_sample: false
+  use_cache: false # Can set to true for faster generation (uses more memory)
+  clean_up_tokenization_spaces: true
