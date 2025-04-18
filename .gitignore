@@ -2,3 +2,5 @@ venv/
 *.pyc
 src/scripts/external_dataloader.py
 src.zip
+src/config/benchmark_config(1).yaml
+src/config/prove123.yaml
