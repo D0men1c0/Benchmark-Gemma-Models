@@ -11,18 +11,16 @@ general:
 # ============================
 tasks:
   - name: "MMLU"
-    type: "classification" # Task type
+    type: "generation" # Task type
     description: "Massive Multitask Language Understanding"
     datasets:
       - name: "cais/mmlu"
         source_type: "hf_hub" # Assuming Hugging Face Hub
-        config: "all" # Specify config if needed, e.g., 'all' for MMLU
+        config: "anatomy" # Specify config if needed, e.g., 'all' for MMLU
         split: "validation" # Or "test", "train" etc.
     evaluation_metrics:
-      - name: accuracy
-      - name: f1_score
-        # options: { average: 'weighted' } # Example options
-      - name: perplexity
+      - name: exact_match
+        options: { normalize: true, ignore_case: true, ignore_punct: true }
 
   - name: "GSM8K"
     type: "generation" # Task type
@@ -113,7 +111,7 @@ advanced:
   enable_multi_gpu: false
   use_tpu: false
   distributed_training: false
-  batch_size: 32 # Main batch size for DataLoader/inference
+  batch_size: 8 # Main batch size for DataLoader/inference
   # TaskHandler/Tokenizer/Generate parameters could be moved from ModelParamsConfig or defined here
   truncation: true
   padding: true
