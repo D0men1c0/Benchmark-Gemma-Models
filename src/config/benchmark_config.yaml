@@ -10,29 +10,52 @@ general:
 # Benchmark Tasks Configuration
 # ============================
 tasks:
-  - name: "MMLU"
-    type: "generation" # Task type
-    description: "Massive Multitask Language Understanding"
+  # --- Task 1: MMLU (as Letter Generation) ---
+  - name: "MMLU (Generation - Anatomy Subset)"
+    type: "multiple_choice_qa"  # Use the specific type for the TaskHandlerFactory
+    description: "MMLU (Anatomy subset) evaluated via letter generation."
     datasets:
       - name: "cais/mmlu"
-        source_type: "hf_hub" # Assuming Hugging Face Hub
-        config: "anatomy" # Specify config if needed, e.g., 'all' for MMLU
-        split: "validation" # Or "test", "train" etc.
+        source_type: "hf_hub"
+        config: "anatomy"      # USE ONLY ONE SUBSET (e.g., anatomy) for testing! 'all' is too long.
+        split: "validation"
+    evaluation_metrics:
+      - name: exact_match # Key metric for this task setup
+        options: { normalize: true, ignore_case: true, ignore_punct: false } # Useful options
+
+  # --- Task 2: GSM8K (Reasoning + Answer Generation) ---
+  - name: "GSM8K"
+    type: "math_reasoning_generation" # Use the specific type for the TaskHandlerFactory
+    description: "Grade school math problems requiring reasoning steps."
+    datasets:
+      - name: "gsm8k"
+        source_type: "hf_hub"
+        config: "main"
+        split: "test"
     evaluation_metrics:
       - name: exact_match
         options: { normalize: true, ignore_case: true, ignore_punct: true }
+      - name: distinct_ngram
+        options: { ngrams: [1, 2] }
 
-  - name: "GSM8K"
-    type: "generation" # Task type
-    description: "Math dataset with problem-solving tasks"
+  # --- Task 3: Summarization (To test ROUGE, BERTScore etc.) ---
+  - name: "CNN/DailyMail Summarization (Sample)"
+    type: "summarization" # Use the specific type for the TaskHandlerFactory
+    description: "Abstractive summarization benchmark on news articles (small sample)."
     datasets:
-      - name: "gsm8k"
-        source_type: "hf_hub" # Assuming Hugging Face Hub
-        config: "main" # Specify config if needed, e.g., 'main' for GSM8K
-        split: "test" # Or "train"
+      - name: "cnn_dailymail"       
+        source_type: "hf_hub"
+        config: "3.0.0"           
+        split: "test"       
     evaluation_metrics:
-      - name: accuracy
-      # - name: execution_time # Note: Requires implementation and registration
+      - name: rouge
+        options:
+          metrics: ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
+          stats: ['f']
+      - name: bert_score
+        options: { lang: "en" }
+      - name: distinct_ngram
+        options: { ngrams: [1, 2] }
 
 # ============================
 # Models Configuration
@@ -50,7 +73,7 @@ models:
     variant: "gemma"
     size: "13B"
     framework: "huggingface"
-    checkpoint: "google/gemma-13b" # Actual HF model ID or path
+    checkpoint: "google/gemma-3-12b-it" # Actual HF model ID or path
     quantization: "8bit"
     offloading: true
 
