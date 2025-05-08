@@ -1,4 +1,4 @@
-# Gemma Model Benchmark Suite
+# Benchmark-Gemma-Models
 
 [![Python: 3.12](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
@@ -59,7 +59,7 @@ This framework offers a robust, automated solution to assess the performance of 
 
 ### 1. Clone Repository
 ```
-git clone https://github.com/D0men1c0/DeepMind-GSoC-25-Benchmark-Gemma-Models
+git clone https://github.com/D0men1c0/Benchmark-Gemma-Models
 ```
 ### 2. Installation Dependencies
 ```bash
