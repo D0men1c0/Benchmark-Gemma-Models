@@ -2,8 +2,6 @@
 
 [![Python: 3.12](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
-A comprehensive benchmarking suite developed for **Google Summer of Code 2025** with **DeepMind**, designed to evaluate and compare **Gemma models** on a wide range of NLP tasks and datasets.
-
 ## Overview  
 This framework offers a robust, automated solution to assess the performance of **Gemma models**, providing insights across diverse tasks including both academic benchmarks and custom datasets. The system emphasizes scalability, extensibility, and ease of use, ensuring researchers can efficiently measure and compare model performance.
 
