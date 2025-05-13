@@ -15,49 +15,49 @@ The architecture is designed for clarity, maintainability, and extensibility. Ke
 ```bash
 📦 src
 ├── 📂 config/
-│   ├── benchmark_config.yaml   # Main Pydantic-driven benchmark configuration
+│   ├── benchmark_config.yaml         # Main Pydantic-driven benchmark configuration
 │
-├── 📂 benchmark/              # Core benchmarking logic
-│   ├── benchmark_loader.py     # Main BenchmarkRunner orchestrating the flow
+├── 📂 benchmark/                    # Core benchmarking logic
+│   ├── benchmark_loader.py           # Main BenchmarkRunner orchestrating the flow
 │   │
-│   ├── 📂 models/             # Model loading and management
+│   ├── 📂 models/                   # Model loading and management
 │   │   ├── base_model_loader.py      # Abstract model loader interface
 │   │   ├── concrete_models.py        # Hugging Face, PyTorch, TensorFlow loaders
 │   │   └── models_factory.py         # ModelLoaderFactory
 │   │
-│   ├── 📂 dataset/            # Dataset loading and normalization (updated from 'datasets')
-│   │   ├── base_dataset_loader.py    # Abstract dataset loader interface
-│   │   ├── concrete_dataset_loader.py  # Handles HF Hub, local, streaming, field normalization
-│   │   └── dataset_factory.py        # DatasetFactory
+│   ├── 📂 dataset/                   # Dataset loading and normalization (updated from 'datasets')
+│   │   ├── base_dataset_loader.py     # Abstract dataset loader interface
+│   │   ├── concrete_dataset_loader.py # Handles HF Hub, local, streaming, field normalization
+│   │   └── dataset_factory.py         # DatasetFactory
 │   │
-│   ├── 📂 tasks/              # Task-specific prompting and generation logic
-│   │   ├── base_task_handler.py      # Abstract task handler interface
-│   │   ├── concrete_task_handlers.py   # Handlers for various tasks (QA, Math, Summarization)
+│   ├── 📂 tasks/                     # Task-specific prompting and generation logic
+│   │   ├── base_task_handler.py       # Abstract task handler interface
+│   │   ├── concrete_task_handlers.py  # Handlers for various tasks (QA, Math, Summarization)
 │   │   └── task_handlers_factory.py   # TaskHandlerFactory
 │   │
-│   ├── 📂 postprocessing/     # Task-specific output post-processing
-│   │   ├── base_postprocessor.py     # Abstract post-processor interface
-│   │   ├── concrete_postprocessors.py# Implementations for MMLU, GSM8K, etc.
-│   │   └── postprocessor_factory.py  # PostProcessorFactory
+│   ├── 📂 postprocessing/             # Task-specific output post-processing
+│   │   ├── base_postprocessor.py       # Abstract post-processor interface
+│   │   ├── concrete_postprocessors.py  # Implementations for MMLU, GSM8K, etc.
+│   │   └── postprocessor_factory.py    # PostProcessorFactory
 │   │
-│   ├── 📂 evaluation/         # Evaluation and metrics computation
-│   │   ├── evaluator.py         # Evaluator managing stateful metrics lifecycle
-│   │   └── 📂 metrics/          # Metrics computation
-│   │       ├── base_metrics.py      # Abstract stateful metric interface (reset, update, result)
-│   │       ├── concrete_metrics.py  # Stateful implementations of various metrics
-│   │       └── metric_factory.py    # MetricFactory
+│   ├── 📂 evaluation/                 # Evaluation and metrics computation
+│   │   ├── evaluator.py                # Evaluator managing stateful metrics lifecycle
+│   │   └── 📂 metrics/                 # Metrics computation
+│   │       ├── base_metrics.py         # Abstract stateful metric interface (reset, update, result)
+│   │       ├── concrete_metrics.py     # Stateful implementations of various metrics
+│   │       └── metric_factory.py       # MetricFactory
 │   │
-│   └── 📂 reporting/          # Results saving and reporting
-│       └── file_manager.py        # Saves results in JSON, CSV, PDF formats
+│   └── 📂 reporting/                 # Results saving and reporting
+│       └── file_manager.py            # Saves results in JSON, CSV, PDF formats
 │
-├── 📂 scripts/                # Execution entry points
-│   └── run_benchmark.py       # Main script to run benchmarks
+├── 📂 scripts/                       # Execution entry points
+│   └── run_benchmark.py               # Main script to run benchmarks
 │
-├── 📂 utils/                  # Shared utilities
-│   └── logger.py              # Unified logging system
+├── 📂 utils/                         # Shared utilities
+│   └── logger.py                      # Unified logging system
 │
-├── config_models.py           # Pydantic models for type-safe configuration
-└── generate_default_config.py  # Utility to generate a default configuration file
+├── config_models.py                  # Pydantic models for type-safe configuration
+└── generate_default_config.py         # Utility to generate a default configuration file
 ```
 
 ---
