@@ -1,55 +1,62 @@
 # Benchmark-Gemma-Models
 
-[![Python: 3.12](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
-## Overview  
-This framework offers a robust, automated solution to assess the performance of **Gemma models**, providing insights across diverse tasks including both academic benchmarks and custom datasets. The system emphasizes scalability, extensibility, and ease of use, ensuring researchers can efficiently measure and compare model performance.
+## Overview
+This framework offers a robust, automated, and scalable solution to assess the performance of Large Language Models (LLMs), with a primary focus on **Gemma models**. It provides insights across diverse tasks, including standard academic benchmarks and custom datasets. The system emphasizes scalability through efficient batch processing and stateful metrics, extensibility via a modular factory-based architecture, and ease of use, ensuring researchers can efficiently measure, compare, and reproduce model performance.
 
 ---
 
 ## Modular Architecture
 
+The architecture is designed for clarity, maintainability, and extensibility. Key components are managed through factories, allowing for easy integration of new models, datasets, tasks, and metrics. Configuration is centralized using Pydantic models loaded from YAML files.
+
 ### Directory Structure
 ```bash
 📦 src
-├── 📂 config/                 
-│   ├── benchmark_config.yaml   # Main benchmark configuration file
-│   ├── logging.conf            # Logging configurations
+├── 📂 config/
+│   ├── benchmark_config.yaml   # Main Pydantic-driven benchmark configuration
 │
-├── 📂 benchmark/              # Core benchmarking logic and factories
-│   ├── benchmark_loader.py     # BenchmarkLoader with run() and _run_tasks() methods
+├── 📂 benchmark/              # Core benchmarking logic
+│   ├── benchmark_loader.py     # Main BenchmarkRunner orchestrating the flow
 │   │
-│   ├── 📂 models/             # Model management
-│   │   ├── base_model_loader.py      # Abstract model interface
-│   │   ├── concrete_models.py        # Loading from HuggingFace/TensorFlow/PyTorch
-│   │   └── models_factory.py         # ModelLoaderFactory implementation
+│   ├── 📂 models/             # Model loading and management
+│   │   ├── base_model_loader.py      # Abstract model loader interface
+│   │   ├── concrete_models.py        # Hugging Face, PyTorch, TensorFlow loaders
+│   │   └── models_factory.py         # ModelLoaderFactory
 │   │
-│   ├── 📂 datasets/           # Dataset handling
-│   │   ├── base_dataset_loader.py    # Abstract dataset interface
-│   │   ├── concrete_dataset_loader.py  # Implementations for Hub/S3/local
-│   │   └── dataset_factory.py        # DataloaderFactory implementation
+│   ├── 📂 dataset/            # Dataset loading and normalization (updated from 'datasets')
+│   │   ├── base_dataset_loader.py    # Abstract dataset loader interface
+│   │   ├── concrete_dataset_loader.py  # Handles HF Hub, local, streaming, field normalization
+│   │   └── dataset_factory.py        # DatasetFactory
 │   │
-│   ├── 📂 tasks/              # Task-specific logic
-│   │   ├── base_task_handler.py      # Abstract task interface
-│   │   ├── concrete_task_handlers.py   # Handlers for generation/classification with batch sizing
-│   │   └── task_handlers_factory.py   # TaskHandlerFactory implementation
+│   ├── 📂 tasks/              # Task-specific prompting and generation logic
+│   │   ├── base_task_handler.py      # Abstract task handler interface
+│   │   ├── concrete_task_handlers.py   # Handlers for various tasks (QA, Math, Summarization)
+│   │   └── task_handlers_factory.py   # TaskHandlerFactory
+│   │
+│   ├── 📂 postprocessing/     # Task-specific output post-processing
+│   │   ├── base_postprocessor.py     # Abstract post-processor interface
+│   │   ├── concrete_postprocessors.py# Implementations for MMLU, GSM8K, etc.
+│   │   └── postprocessor_factory.py  # PostProcessorFactory
 │   │
 │   ├── 📂 evaluation/         # Evaluation and metrics computation
-│   │   ├── evaluator.py         # Evaluator logic to process predictions
+│   │   ├── evaluator.py         # Evaluator managing stateful metrics lifecycle
 │   │   └── 📂 metrics/          # Metrics computation
-│   │       ├── base_metrics.py      # Abstract metric interface
-│   │       ├── concrete_metrics.py  # Implementations of various metrics (rouge, perplexity, bleu, etc.)
-│   │       └── metric_factory.py    # MetricFactory for orchestration
+│   │       ├── base_metrics.py      # Abstract stateful metric interface (reset, update, result)
+│   │       ├── concrete_metrics.py  # Stateful implementations of various metrics
+│   │       └── metric_factory.py    # MetricFactory
 │   │
-│   └── 📂 reporting/          # Reporting functionality
-│       └── save_results.py    # SaveResults function to output reports (JSON/CSV/PDF)
+│   └── 📂 reporting/          # Results saving and reporting
+│       └── file_manager.py        # Saves results in JSON, CSV, PDF formats
 │
-├── 📂 scripts/                # Execution workflows
-│   └── run_benchmark.py       # Main entry point that initializes BenchmarkLoader and starts the process
+├── 📂 scripts/                # Execution entry points
+│   └── run_benchmark.py       # Main script to run benchmarks
 │
 ├── 📂 utils/                  # Shared utilities
 │   └── logger.py              # Unified logging system
 │
+├── config_models.py           # Pydantic models for type-safe configuration
 └── generate_default_config.py  # Utility to generate a default configuration file
 ```
 
@@ -74,8 +81,8 @@ venv\Scripts\activate
 ```
 ### 4. Run Benchmark
 ```bash
-python scripts/run_benchmark.py \
-    --config config/benchmark_config.yaml \
+python src/scripts/run_benchmark.py \
+    --config src/config/benchmark_config.yaml \
     --output-dir results/
 ```
 
@@ -83,116 +90,185 @@ python scripts/run_benchmark.py \
 
 ## Workflow Deep Dive
 
-![Benchmark Pipeline Diagram](img/mermaid_workflow.png)
+![Benchmark Pipeline Diagram](img/mermaid_new_diagram.png)
 
-### Benchmark Pipeline Overview
+The benchmarking process is orchestrated by the `BenchmarkRunner` and initiated from the `run_benchmark.py` script.
 
-1. **Initialization & Configuration Loading**  
-   - From `run_benchmark.py`, the benchmarking process begins by initializing the `BenchmarkLoader` and calling its `run()` method.
-   - The `BenchmarkLoader` loads the `benchmark_config.yaml` configuration file. This file contains advanced settings (distributed training, multi-GPU, TPU usage), general experiment parameters (experiment name, output directory, random seed), model specifications, reporting preferences, and task definitions (including custom parameters like truncation, padding, max item generation, etc.).
+1.  **Initialization and Configuration Loading**
+    * The process begins when `run_benchmark.py` initializes the `BenchmarkRunner`.
+    * A core part of this initialization is loading and validating the `benchmark_config.yaml` file using Pydantic models defined in `config_models.py` for type safety and clear structure.
+    * This configuration file governs all aspects of the benchmark, including:
+        * General experiment parameters (name, output directory, random seed).
+        * Advanced runtime settings (multi-GPU usage, specific model generation parameters like truncation and padding).
+        * Model details (including quantization choices).
+        * Dataset sources and configurations.
+        * Task definitions and their types.
+        * Metric choices and their specific options.
+        * Reporting preferences.
 
-2. **Model and Dataset Loading**  
-   - **ModelLoaderFactory:**  
-     The `BenchmarkLoader` calls the `ModelLoaderFactory` to load models from sources such as HuggingFace, TensorFlow, or PyTorch while applying the required quantization (e.g., 4bit).
-   - **DataloaderFactory:**  
-     Similarly, dataset parameters are sent to the `DataloaderFactory` to load datasets from HuggingFace or custom sources.
+2.  **Dataset Sourcing and Preparation**
+    * For each task outlined in the configuration, such as **MMLU (Anatomy subset)**, **GSM8K**, and **CNN/DailyMail Summarization**, the `BenchmarkRunner` ensures the respective datasets (`cais/mmlu`, `gsm8k`, `cnn_dailymail`) are available.
+    * It employs a `DatasetFactory` to create instances of `ConcreteDatasetLoader`.
+    * The `ConcreteDatasetLoader` is responsible for:
+        * Fetching datasets from Hugging Face Hub, as specified (e.g., `cais/mmlu` with config `anatomy`, `gsm8k` with config `main`, `cnn_dailymail` with config `3.0.0`).
+        * Supporting data streaming for large datasets.
+        * Performing automatic field normalization, which intelligently maps diverse column names from original datasets (e.g., `question` and `answer` from GSM8K, or `article` and `highlights` from CNN/DailyMail) to a standardized set of field names (like `input_text`, `target_text`, `label_index`) based on the specified `task_type`. This standardization simplifies downstream processing by task handlers.
 
-3. **Task Processing with _run_tasks**  
-   - For each task defined in the configuration, the `BenchmarkLoader` invokes the `_run_tasks()` method.
-   - This method processes the relevant dataset and then delegates to the `TaskHandlerFactory`, which determines whether the task is a generation or classification task and handles batch sizing accordingly.
+3.  **Model Loading and Setup**
+    * For every model specified in the configuration (e.g., `gemma-7b`, `llama-2-7b`), the `BenchmarkRunner` utilizes a `ModelLoaderFactory`.
+    * This factory instantiates the appropriate `ConcreteModelLoader`.
+    * The `ConcreteModelLoader` then loads the target LLM from sources like Hugging Face, using the specified `checkpoint`.
+    * The loading process also handles specified quantization (e.g., 4-bit, 8-bit) and model offloading to optimize resource usage.
 
-4. **Evaluation & Metrics Calculation**  
-   - The predictions generated by the task handlers are forwarded to the `Evaluator`.
-   - The `Evaluator` uses the `MetricFactory` to compute evaluation metrics such as rouge, perplexity, execution time, bleu, etc.
+4.  **Task Execution per Model and Dataset**
+    * The `BenchmarkRunner` then iterates through each configured model and, for each model, through each defined task like **MMLU (Anatomy subset)**, **GSM8K**, or **CNN/DailyMail Summarization**.
+    * For a given model-task pair:
+        * A `TaskHandlerFactory` selects the specialized `ConcreteTaskHandler` based on the task's `type` (e.g., `multiple_choice_qa` for MMLU, `math_reasoning_generation` for GSM8K, `summarization` for CNN/DailyMail).
+        * The `ConcreteTaskHandler` takes batches of data from the normalized dataset.
+        * It prepares task-specific prompts tailored to guide the LLM effectively for that particular task (e.g., formatting MMLU questions with choices, passing GSM8K problems directly, or providing CNN/DailyMail articles for summarization).
+        * It manages generation parameters (like `max_new_tokens`, `num_beams`) retrieved from the "advanced" section of the configuration.
+        * The handler invokes the model's generation capabilities to get raw output.
 
-5. **Reporting**  
-   - Finally, the evaluation results are saved using the `SaveResults` function.
-   - The final benchmark report is output in various formats (JSON, CSV, PDF) and returned to the caller.
+5.  **Output Post-processing**
+    * The raw text generated by the model often needs refinement before it can be evaluated.
+    * A `PostProcessorFactory` selects a task-specific `ConcretePostProcessor`.
+    * This component cleans the model's output and extracts the relevant information. For instance:
+        * The `MMLUPostProcessor` extracts the choice letter (A, B, C, D) from the model's generation.
+        * The `GSM8KPostProcessor` extracts the final numerical answer from the reasoned output.
+        * The `SummarizationPostProcessor` might perform basic cleaning on the generated summary.
+    * This step ensures that both predictions and reference labels are in a comparable format for metric calculation.
 
-### Summarize Components
+6.  **Stateful, Batched Evaluation**
+    * The processed predictions and labels for each batch are then passed to an `Evaluator` instance.
+    * The `Evaluator` manages the lifecycle of **stateful metrics**:
+        * At the beginning of a task evaluation, it uses a `MetricFactory` to instantiate all configured `ConcreteMetric` classes (e.g., `exact_match` for MMLU and GSM8K; `rouge`, `bert_score` for summarization).
+        * Each metric instance has its options set via its `set_options()` method (e.g., `normalize: true` for `exact_match`, or `lang: "en"` for `bert_score`) and its internal state reset via its `reset_state()` method.
+    * As the `BenchmarkRunner` feeds data batch by batch, these are passed to the `evaluator.update_batch_metrics()` method. Each `ConcreteMetric` then updates its internal state based on the current batch's data.
+    * To provide visibility during long runs, **intermediate metric scores** can be logged periodically, based on the `evaluation.log_interval` setting in the configuration.
+    * Once all batches for a task have been processed, the `evaluator.finalize_results()` method is called. At this point, each `ConcreteMetric` computes its final score.
 
-| **Component**           | **Description**                                                                 | **Folder/Path**                   |
-|-------------------------|---------------------------------------------------------------------------------|-----------------------------------|
-| run_benchmark.py        | Main script that initializes the benchmarking process by creating and running the BenchmarkLoader | `src/scripts/`                        |
-| BenchmarkLoader         | Loads the configuration file, models, and datasets; iterates over tasks by calling `_run_tasks()` | `src/benchmark/`|
-| ModelLoaderFactory      | Factory for loading models from HuggingFace, TensorFlow, or PyTorch with quantization support | `src/benchmark/models/`               |
-| DataloaderFactory       | Factory for loading datasets from HuggingFace and custom sources, including handling custom parameters | `src/benchmark/dataset/`             |
-| TaskHandlerFactory      | Determines and dispatches tasks based on type (generation or classification with batch sizing) | `src/benchmark/tasks/`                |
-| Evaluator               | Processes predictions and coordinates evaluation using various metrics         | `src/benchmark/evaluation/`           |
-| MetricFactory           | Computes evaluation metrics (rouge, perplexity, execution time, bleu, etc.)        | `src/benchmark/evaluation/metrics/`   |
-| SaveResults             | Saves final benchmark results in multiple formats (JSON, CSV, PDF)                | `src/benchmark/reporting/`            |
+7.  **Reporting**
+    * Finally, the `BenchmarkRunner` collects all aggregated metric results.
+    * These comprehensive results are then passed to a `FileManager`, which saves them in the user-specified formats (e.g., JSON, CSV, PDF) to the designated output directory.
+
+This structured pipeline ensures a reproducible, extensible, and efficient benchmarking process from configuration to final report.
+
+### Core Components
+
+| Component                 | Description                                                                                                                               | Path (`src/`)                         |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+| `run_benchmark.py`        | Main script; parses arguments, loads the Pydantic-validated configuration, and initializes/runs the `BenchmarkRunner`.                      | `scripts/`                            |
+| `config_models.py`        | Defines Pydantic models for structuring and validating `benchmark_config.yaml`.                                                           | `config_models.py`                    |
+| `BenchmarkRunner`         | Orchestrates the entire benchmark lifecycle: dataset and model loading, iteration through tasks, and managing the evaluation flow.          | `benchmark/benchmark_loader.py`       |
+| `DatasetFactory`          | A factory responsible for creating instances of `ConcreteDatasetLoader`.                                                                    | `benchmark/dataset/`                |
+| `ConcreteDatasetLoader`   | Loads datasets from various sources (Hugging Face Hub, local), supports streaming, and performs crucial input field normalization.          | `benchmark/dataset/`                |
+| `ModelLoaderFactory`      | A factory for creating model loader instances, supporting different frameworks and quantization.                                          | `benchmark/models/`                   |
+| `TaskHandlerFactory`      | A factory that selects the appropriate `ConcreteTaskHandler` based on the `type` specified for a task.                                    | `benchmark/tasks/`                    |
+| `ConcreteTaskHandler`     | Handles the specifics of a given task type, including preparing prompts/inputs from batched data and managing model generation.         | `benchmark/tasks/`                    |
+| `PostProcessorFactory`    | A factory for selecting the appropriate `ConcretePostProcessor` for a task.                                                               | `benchmark/postprocessing/`           |
+| `ConcretePostProcessor`   | Processes raw model outputs and reference labels to prepare them for consistent metric evaluation (e.g., extracting specific answer formats). | `benchmark/postprocessing/`           |
+| `Evaluator`               | Manages the lifecycle of stateful metrics. It initializes metrics, updates them with data from each batch, and finalizes the results.       | `benchmark/evaluation/evaluator.py` |
+| `MetricFactory`           | A factory used by the `Evaluator` to create instances of `ConcreteMetric` classes.                                                        | `benchmark/evaluation/metrics/`     |
+| `ConcreteMetric`          | Implements specific evaluation metrics (e.g., Accuracy, ROUGE, ExactMatch) with a stateful interface (`set_options`, `reset_state`, `update_state`, `result`). | `benchmark/evaluation/metrics/`     |
+| `FileManager`             | Responsible for saving the final, aggregated benchmark results into various output formats like JSON, CSV, and PDF.                       | `benchmark/reporting/file_manager.py` |
 
 ---
 
 ## Key Features
 
-- **Advanced Configuration Management**  
-  This system leverages a comprehensive YAML configuration file (`benchmark_config.yaml`) that enables users to specify advanced settings such as distributed training, multi-GPU/TPU utilization, and custom parameters (e.g., truncation, padding, max item generation). This flexible setup allows for fine-tuning experiments without changing the core code.
+This benchmark suite is engineered from the ground up to provide a robust, flexible, and developer-friendly platform for comprehensive LLM evaluation:
 
-- **Comprehensive Evaluation & Reporting**  
-  Combines classic NLP metrics with cutting-edge LLM evaluation ([2404.09135](https://arxiv.org/html/2404.09135v1)):  
-  - **Core Metrics**: Accuracy, F1, BLEU, ROUGE  
-  - **Advanced Generation**: BERTScore, BLEURT, Perplexity  
-  - **Safety/Diversity**: Toxicity detection, Distinct-n, Entropy
-  - **Composite Scoring**: Configurable weighted combinations
+* **Advanced, Pydantic-Driven Configuration:**
+    * Utilizes a central YAML configuration file (`benchmark_config.yaml`), rigorously validated by Pydantic models (`config_models.py`).
+    * Offers granular control over every experiment aspect:
+        * **General Settings:** Experiment naming, output directories, random seeds.
+        * **Model Parameters:** Specify LLMs (e.g., Gemma, Llama 2, Mistral), quantization (4-bit, 8-bit), offloading, and fine-tune generation arguments (`max_new_tokens`, `num_beams`, `temperature`, etc.).
+        * **Dataset Specifications:** Define sources (Hugging Face Hub, local), splits, and streaming options.
+        * **Task Definitions:** Configure multiple tasks (e.g., MMLU, GSM8K, Summarization) with their specific types.
+        * **Metric Choices:** Select a wide array of metrics and their specific options (e.g., normalization for ExactMatch, language for BERTScore).
+        * **Runtime Parameters:** Control `batch_size`, `truncation`, `padding`, and even settings for potential distributed training or specialized hardware (multi-GPU/TPU, though full support for these is a future step).
+    * This centralized approach allows for complex experiment design and fine-tuning without altering the core codebase, ensuring reproducibility and ease of iteration.
 
-- **Modular & Scalable Architecture**  
-  The architecture is designed around modular components with clear separations of concern. Factories such as `ModelLoaderFactory`, `DataloaderFactory`, `TaskHandlerFactory`, and `MetricFactory` abstract the implementation details, ensuring that new models, datasets, tasks, or metrics can be easily integrated. This pattern promotes scalability and long-term maintainability.
+* **Highly Modular & Scalable "Factory-First" Architecture:**
+    * The entire framework is built upon a modular design leveraging the **factory pattern** for all core components: `ModelLoaderFactory`, `DatasetFactory`, `TaskHandlerFactory`, `PostProcessorFactory`, and `MetricFactory`.
+    * This de-coupled architecture ensures **high extensibility and maintainability**. Adding new models, datasets, task types, post-processing routines, or evaluation metrics typically involves creating a new concrete class and registering it with the respective factory, minimizing impact on existing code.
+    * This design inherently makes the suite **scalable**, ready to adapt as new LLMs and evaluation methodologies emerge.
 
-- **Multi-Framework Model Support**  
-  The system supports loading models from HuggingFace, TensorFlow, and PyTorch. It also includes quantization support (e.g., 4bit) which is essential for optimizing resource usage and running benchmarks on various hardware configurations.
+* **Standardized Benchmarking Across Diverse LLMs:**
+    * A key strength is the ability to benchmark **various LLMs on a consistent set of tasks and evaluation protocols**. By defining tasks (like MMLU, GSM8K, Summarization) and their evaluation criteria once in the configuration, you can systematically compare different models (Gemma, Llama, Mistral, etc.) and their variants (e.g., different sizes, quantization levels) under the same conditions.
+    * This provides a level playing field for fair and insightful performance comparisons.
 
-- **Flexible Dataset Integration**  
-  Datasets can be loaded from both standard sources (like HuggingFace) and custom repositories. This flexibility makes it easier to benchmark against a diverse range of datasets, ensuring that experiments remain robust and applicable to multiple domains.
+* **Automated Data Handling Pipeline:**
+    * **Dataset Normalization:** `ConcreteDatasetLoader` automatically normalizes diverse dataset field names (e.g., mapping `article` or `question` to a standard `input_text`) based on `task_type`, simplifying data integration.
+    * **Task-Specific Prompting:** `ConcreteTaskHandler` classes prepare tailored prompts from normalized batch data to guide LLMs effectively for each specific task.
+    * **Output Post-processing:** Dedicated `ConcretePostProcessor` modules (e.g., `MMLUPostProcessor`, `GSM8KPostProcessor`) clean and structure raw model outputs (e.g., extracting choice letters, numerical answers), ensuring predictions are in a comparable format to reference labels for accurate evaluation.
 
-- **Task-Specific Processing**  
-  Each benchmark task, whether it involves text generation or classification, is handled by specialized task handlers that manage processing nuances such as batch sizing. The design ensures that the system can cater to different types of NLP tasks while maintaining high performance.
+* **Efficient & Scalable Evaluation with Stateful Metrics:**
+    * **Stateful Metric Design:** Core evaluation metrics are implemented with a stateful interface (`set_options`, `reset_state`, `update_state`, `result`), allowing them to accumulate results batch-by-batch.
+    * **Memory Efficiency:** This approach, managed by the `Evaluator`, drastically reduces memory footprint compared to loading all predictions/labels at once, enabling robust evaluation on very large datasets.
+    * **Intermediate Progress Logging:** Monitor lengthy evaluations with periodic logging of current metric scores, configurable via `evaluation.log_interval`, providing valuable real-time feedback.
 
-- **Comprehensive Evaluation & Reporting**  
-  The evaluator component orchestrates the calculation of various metrics (e.g., rouge, perplexity, execution time, bleu) through a dedicated MetricFactory. This comprehensive approach ensures that all aspects of model performance are measured. The final results are then saved in multiple formats (JSON, CSV, PDF), allowing for both automated post-processing and human review.
+* **Comprehensive and Customizable Metric Suite:**
+    * Supports a wide array of built-in metrics:
+        * **Accuracy & Classification:** Accuracy, F1-Score, Precision, Recall.
+        * **Text Generation & Similarity:** ROUGE, BERTScore, BLEU, METEOR, Perplexity.
+        * **Exact Matching:** ExactMatch with configurable normalization.
+        * **Diversity & Content:** Distinct N-grams, Word Entropy.
+        * **And more**, all adapted for the stateful, batched flow.
+    * Easily extendable with new custom metrics by adhering to the `BaseMetric` interface.
 
-- **Factory Pattern Implementation**  
-  By utilizing the factory design pattern throughout the system, I ensure a high level of abstraction and decoupling between components. This not only simplifies the process of extending the system with new functionality but also improves code readability and maintainability.
+* **Versatile Reporting:**
+    * The `FileManager` generates comprehensive benchmark results in multiple user-friendly formats: JSON (for machine readability), CSV (for data analysis in spreadsheets), and PDF (for shareable, human-readable reports).
 
 ---
 
-## Why Use This Benchmark Suite?  
+## Why Use This Benchmark Suite?
 
-- **Extensible Design** — Built with modular components and factory patterns to simplify future enhancements.  
-- **Multi-Framework Support** — Compatible with **Hugging Face**, **TensorFlow**, and **PyTorch** models, including quantized versions for efficient evaluation.  
-- **Advanced Evaluation Metrics** — Supports diverse metrics such as **accuracy**, **F1 score**, **perplexity**, **execution time**, and more.  
-- **Flexible Task Management** — Handles both **classification** and **generation** tasks with dynamic batch sizing for optimal performance.  
-- **Robust Reporting** — Produces results in multiple formats (**JSON**, **CSV**, **PDF**) and offers visual summaries for better insights.  
+Choose this suite for a robust, transparent, and developer-friendly LLM evaluation experience:
+
+* **Scalability for Demanding Benchmarks:** Designed from the ground up with stateful metrics and batch processing to handle large datasets and complex models without exhausting memory.
+* **Deep, Granular Insights:** Go beyond simple scores with task-specific input/output processing, a rich suite of diverse metrics, and detailed configuration options.
+* **High Extensibility & Maintainability:** The modular, factory-based architecture makes it straightforward to add new models, datasets, evaluation tasks, or metrics as the LLM landscape evolves.
+* **Reproducible & Configurable Experiments:** Pydantic-validated YAML configurations ensure that benchmarks are well-defined, easy to replicate, and simple to modify.
+* **Efficient Resource Management:** Support for model quantization and careful batch handling helps optimize the use of computational resources.
+* **Developer-Friendly:** Clear separation of concerns, Pythonic design, and comprehensive logging (including intermediate metrics) make the framework easy to understand, use, and debug.
+* **Focus on Practicality:** Addresses real-world challenges in LLM benchmarking, such as efficient processing of large data and the need for diverse, task-appropriate evaluation.
+* **Robust Reporting** Produces results in multiple formats (JSON, CSV, PDF) and offers visual summaries for better insights.
 
 ---
 
 ## Next Steps
 
-- **Validation and Robust Testing**  
-  - Conduct thorough unit and integration testing to validate each component of the system.
-  - Perform end-to-end tests on the benchmark pipeline to ensure that configuration loading, model and dataset management, task handling, evaluation, and reporting work seamlessly together.
-  
-- **Expand Metrics Coverage**  
-  - Integrate additional evaluation metrics to capture more nuanced aspects of model performance.
-  - Consider metrics specific to new tasks or domains to broaden the benchmark’s applicability.
+Our immediate focus is on further solidifying the framework and enhancing its core benchmarking capabilities. Longer-term, we envision expanding its reach and analytical power, welcoming community contributions and feedback throughout the process.
 
-- **Enhance Task Handling for Generation**  
-  - Refine the generation task handlers to improve output quality, reduce errors, and optimize batch processing.
-  - Explore incorporating advanced techniques like beam search, temperature sampling, or top-k/top-p filtering to enhance generation capabilities.
+### Immediate & Medium-Term Goals
 
-- **Cloud Integration**  
-  - Add support for cloud-based benchmarking
-  - Implement distributed evaluation across multiple nodes  
-  - Develop auto-scaling capabilities for large experiments  
+* **Strengthen Test Coverage & Stability:**
+    * Develop a comprehensive suite of unit and integration tests for key components (model/dataset loading, task handling, stateful metric evaluation, post-processing logic).
+    * Conduct extensive end-to-end pipeline validation with diverse configurations and datasets to ensure robustness and reproducible results.
+* **Expand Core Metrics & Benchmark Support:**
+    * Integrate additional, widely-used evaluation metrics, particularly those capturing nuanced aspects of LLM performance such as advanced reasoning capabilities, instruction following fidelity, and specific safety or robustness probes.
+    * Streamline the process for users to integrate new academic benchmarks and define custom task types within the existing factory-based architecture.
+* **Enhance Generation Task Capabilities:**
+    * Refine prompt engineering strategies within `TaskHandlers` to elicit optimal performance from different models.
+    * Explore and integrate advanced, configurable generation techniques (e.g., beam search, diverse sampling methods like top-k/top-p, temperature control) as options within the `advanced` configuration section to allow for more controlled and varied model output during benchmarks.
+* **Improve Reporting & Usability:**
+    * Enhance the content, clarity, and visual appeal of generated PDF reports, potentially including more auto-generated charts summarizing key findings.
+    * Refine existing documentation, create new tutorials or example use-cases, and ensure all README sections accurately reflect the latest features for an even smoother user experience.
+* **Community Engagement & Continuous Feedback:**
+    * Actively gather feedback from users and the broader AI/ML community to identify pain points, bugs, and desired features to guide future development.
+    * Encourage and facilitate community contributions for new features, benchmarks, models, and metrics.
 
-- **Dashboard Integration**  
-  - Develop an interactive dashboard to visualize benchmark results and system performance in real-time.
-  - Consider integration with tools such as Grafana or building a custom web interface (like Streamlit) to allow users to drill down into metrics and track historical performance trends.
+### Long-Term Vision / Ambitious Goals
 
-- **Database Integration**  
-  - Implement a database layer to store benchmark results, configurations, and historical data for longitudinal studies.
-  - Enable querying and reporting functionalities to support more in-depth analysis and decision-making based on past benchmark runs.
+* **Advanced Visualization & Interactive Analysis:**
+    * Develop an interactive dashboard (e.g., using Streamlit or Gradio) for dynamic exploration, filtering, and comparison of benchmark results.
+* **Simplified Cloud Execution & Scalability:**
+    * Provide guidance, helper scripts, or investigate lightweight integrations for running benchmarks more easily on common cloud GPU platforms (e.g., Google Colab Pro, Kaggle Kernels, AWS SageMaker, GCP Vertex AI).
+    * (Stretch) Explore options for distributed evaluation across multiple nodes for very large-scale experiments.
+* **Database Integration for Longitudinal Studies:**
+    * Implement an optional database backend (e.g., SQLite, PostgreSQL) to store, query, and analyze benchmark results over time, enabling tracking of model progress, regressions, and historical comparisons.
+* **Broader Model & Framework Support:**
+    * Continuously expand native support for new and emerging LLM architectures and model serving frameworks if community demand arises.
 
-- **Continuous Improvement and Community Feedback**  
-  - Set up a feedback loop with users and stakeholders to continuously refine the system based on real-world usage.
-  - Encourage contributions from the community to add new features, support additional frameworks, and improve overall system performance.
+---
