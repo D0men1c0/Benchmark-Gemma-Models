@@ -37,7 +37,10 @@ class BenchmarkRunner:
             return "cpu"
 
     def _load_all_datasets(self) -> Dict[str, Dict[str, Any]]:
-        """Loads datasets for all tasks defined in the config."""
+        """
+        Loads datasets for all tasks defined in the config.
+        :return: Dictionary of datasets structured as {task_name: {dataset: dataset_instance, streaming: bool}}
+        """
         task_datasets = {}
         self.logger.info("Pre-loading datasets...")
         if not self.config.tasks:
@@ -68,7 +71,11 @@ class BenchmarkRunner:
         return task_datasets
 
     def _load_model_and_tokenizer(self, model_cfg: ModelConfig) -> Optional[Tuple[Any, Any]]:
-        """Loads a single model and tokenizer based on config."""
+        """
+        Loads a single model and tokenizer based on config.
+        :param model_cfg: Configuration for the model to be loaded.
+        :return: Tuple of (model, tokenizer) or None if loading failed.
+        """
         model_name = model_cfg.name
         framework = model_cfg.framework
         quantization = model_cfg.quantization
@@ -95,7 +102,11 @@ class BenchmarkRunner:
             return None
 
     def _cleanup_model_resources(self, model: Optional[Any], tokenizer: Optional[Any]):
-        """Releases model and tokenizer resources."""
+        """
+        Releases model and tokenizer resources.
+        :param model: The model instance to be cleaned up.
+        :param tokenizer: The tokenizer instance to be cleaned up.
+        """
         model_name = getattr(model, 'name_or_path', 'Unknown') # Try to get name for log
         self.logger.info(f"Cleaning up resources for model '{model_name}'...")
         del model
@@ -109,37 +120,101 @@ class BenchmarkRunner:
     def _process_task_batches(self, handler: Any, data_loader: DataLoader, task_name: str, evaluator: Evaluator) -> bool:
         """
         Iterates through DataLoader, processes batches, and updates evaluator with results.
-        Returns True if successful, False if errors occurred that stopped processing.
-        :param handler: Task handler for processing batches.
-        :param data_loader: DataLoader for the dataset.
+        Logs intermediate metric scores periodically.
+
+        :param handler: Task handler instance for processing batches.
+        :param data_loader: DataLoader for the dataset (can be a tqdm iterator).
         :param task_name: Name of the task being processed.
         :param evaluator: Evaluator instance for updating metrics.
-        :return: True if processing was successful, False if errors occurred.
+        :return: True if processing was successful, False if errors occurred that stopped processing.
         """
         batch_num = 0
-        self.logger.info(f"Starting batch processing for task '{task_name}' using stateful evaluator.")
-        for batch in data_loader: # data_loader is already wrapped with tqdm in _run_task_evaluation
+        log_interval_to_use = 0  # Default to 0 (no intermediate logging)
+
+        # Retrieve log_interval from EvaluationConfig instance
+        if self.config.evaluation: # self.config.evaluation should be an EvaluationConfig instance
+            configured_log_interval = self.config.evaluation.log_interval
+
+            if configured_log_interval is not None:
+                if isinstance(configured_log_interval, int) and configured_log_interval > 0:
+                    log_interval_to_use = configured_log_interval
+                else:
+                    # Log a warning if the configured value is invalid but present
+                    self.logger.warning(
+                        f"Invalid log_interval value '{configured_log_interval}' in evaluation config "
+                        f"for task '{task_name}'. Disabling intermediate metric logging."
+                    )
+
+        self.logger.info(
+            f"Starting batch processing for task '{task_name}'. "
+            f"Intermediate log interval: {log_interval_to_use if log_interval_to_use > 0 else 'Disabled'}"
+        )
+        
+        for batch in data_loader:  # data_loader is expected to be iterable (e.g., DataLoader or tqdm(DataLoader))
             batch_num += 1
             try:
                 predictions_batch, labels_batch = handler.process_batch(batch)
 
-                # Ensure batch results are lists, even if single items are returned by handler
+                # Ensure predictions and labels are lists for consistent processing
                 if predictions_batch is not None and not isinstance(predictions_batch, list):
                     predictions_batch = [predictions_batch]
                 if labels_batch is not None and not isinstance(labels_batch, list):
                     labels_batch = [labels_batch]
                 
                 if predictions_batch is not None and labels_batch is not None:
-                     if len(predictions_batch) != len(labels_batch):
-                        self.logger.warning(f"Batch {batch_num} for task '{task_name}': predictions ({len(predictions_batch)}) and labels ({len(labels_batch)}) length mismatch. Skipping batch for evaluation.")
-                        continue # Skip this batch for metric updates
-                     evaluator.update_batch_metrics(predictions_batch, labels_batch)
+                    if len(predictions_batch) != len(labels_batch):
+                        self.logger.warning(
+                            f"Batch {batch_num} for task '{task_name}': predictions ({len(predictions_batch)}) "
+                            f"and labels ({len(labels_batch)}) length mismatch. Skipping batch for evaluation."
+                        )
+                        # Continue to the next batch, but intermediate logging might still occur if interval is met
+                    else:
+                        evaluator.update_batch_metrics(predictions_batch, labels_batch)
                 elif predictions_batch is None or labels_batch is None:
-                    self.logger.warning(f"Batch {batch_num} for task '{task_name}' produced None for predictions or labels. Skipping metric update for this batch.")
+                    self.logger.warning(
+                        f"Batch {batch_num} for task '{task_name}' produced None for predictions or labels. "
+                        f"Skipping metric update for this batch."
+                    )
+
+                # Log intermediate metrics
+                if log_interval_to_use > 0 and batch_num % log_interval_to_use == 0:
+                    intermediate_results = {}
+                    # Accessing evaluator._metrics_instances directly for logging purposes.
+                    # Consider adding a public method to Evaluator if this feels too coupled.
+                    for metric_name, metric_instance in evaluator._metrics_instances.items():
+                        try:
+                            current_value = metric_instance.result()
+                            # Simple formatting for the log
+                            if isinstance(current_value, float):
+                                formatted_value = f"{current_value:.4f}"
+                            elif isinstance(current_value, dict):
+                                formatted_value = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in current_value.items()])
+                            else:
+                                formatted_value = str(current_value)
+                            intermediate_results[metric_name] = formatted_value
+                        except Exception as e:
+                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name}': {e}")
+                            intermediate_results[metric_name] = "Error"
+                    
+                    if intermediate_results:
+                        log_msg_parts = [f"{name}: {value}" for name, value in intermediate_results.items()]
+                        self.logger.info(
+                            f"Task '{task_name}' - Batch {batch_num}/{getattr(data_loader, '__len__', '?')} - " # Show total batches if available
+                            f"Intermediate Metrics: {{{', '.join(log_msg_parts)}}}"
+                        )
+                        
+                        # Optional: Update tqdm postfix if pbar is passed and is a tqdm instance
+                        # if isinstance(data_loader, tqdm) and hasattr(data_loader, 'set_postfix'):
+                        #     data_loader.set_postfix(intermediate_results, refresh=True)
+
 
             except Exception as e:
-                self.logger.error(f"Error processing batch {batch_num} for task '{task_name}': {e}. Stopping task.", exc_info=True)
-                return False # Indicate failure
+                self.logger.error(
+                    f"Error processing batch {batch_num} for task '{task_name}': {e}. Stopping task.", 
+                    exc_info=True # Include traceback for easier debugging
+                )
+                return False  # Indicate failure
+
         self.logger.info(f"Finished batch processing for task '{task_name}'. Processed {batch_num} batches.")
         return True
 
@@ -235,6 +310,7 @@ class BenchmarkRunner:
     def run(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
         Executes the benchmark: loads datasets, runs models on tasks, evaluates, and saves results.
+        :return: Dictionary of results structured as {model: {task: {metric: value}}}
         """
         # Load all datasets first
         task_datasets = self._load_all_datasets()
