@@ -41,19 +41,12 @@ class Evaluator:
             self.logger.warning("Empty predictions or labels passed to update_batch_metrics. Skipping update.")
             return
 
-        for metric_conf in self._metrics_configs:
-            metric_name = metric_conf["name"]
-            metric_options = metric_conf.get("options", {})
-            
-            if metric_name in self._metrics_instances:
-                try:
-                    metric_instance = self._metrics_instances[metric_name]
-                    metric_instance.update_state(batch_predictions, batch_labels, **metric_options)
-                except Exception as e:
-                    self.logger.error(f"Error updating metric {metric_name} for batch: {str(e)}", exc_info=True)
-                    # Optionally remove the metric or mark as failed
-            else:
-                self.logger.warning(f"Metric {metric_name} was not initialized. Skipping update.")
+        for metric_name, metric_instance in self._metrics_instances.items():
+            try:
+                metric_instance.update_state(batch_predictions, batch_labels)
+            except Exception as e:
+                self.logger.error(f"Error updating metric {metric_name} for batch: {str(e)}", exc_info=True)
+                # Optionally remove the metric or mark as failed
 
 
     def finalize_results(self) -> Dict[str, Any]:
