@@ -25,10 +25,16 @@ class AccuracyMetric(BaseMetric):
         self.total_predictions = 0
 
     def reset_state(self) -> None:
+        """Reset the internal state of the metric."""
         self.correct_predictions = 0
         self.total_predictions = 0
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Update the metric with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         # top_k = self._options.get("top_k", None) # Example if options were needed
         # if top_k:
         #     logger.warning("Top-k accuracy not implemented in this stateful version yet.")
@@ -40,6 +46,7 @@ class AccuracyMetric(BaseMetric):
             self.total_predictions += 1
 
     def result(self) -> float:
+        """Compute the final accuracy."""
         if self.total_predictions == 0:
             return 0.0
         return self.correct_predictions / self.total_predictions
@@ -53,14 +60,26 @@ class SklearnScoreMetric(BaseMetric): # Base for Precision, Recall, F1
         self._collected_labels: List[Any] = []
 
     def reset_state(self) -> None:
+        """Reset the internal state of the metric."""
         self._collected_predictions = []
         self._collected_labels = []
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Update the metric with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         self._collected_predictions.extend(predictions)
         self._collected_labels.extend(labels)
 
     def _compute_score(self, score_func, **kwargs) -> float:
+        """
+        Compute the score using the provided sklearn function.
+        :param score_func: The sklearn scoring function to use (e.g., precision_score).
+        :param kwargs: Additional keyword arguments for the scoring function.
+        :return: Computed score.
+        """
         if not self._collected_predictions or not self._collected_labels:
             logger.warning(f"{self.__class__.__name__}: No data collected to compute score.")
             return 0.0
@@ -108,10 +127,16 @@ class ExactMatchMetric(BaseMetric):
         self.total_count = 0
 
     def reset_state(self) -> None:
+        """Reset the internal state of the metric."""
         self.match_count = 0
         self.total_count = 0
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Update the metric with a batch of predictions and labels
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         normalize = self._options.get("normalize", False)
         ignore_case = self._options.get("ignore_case", False)
         ignore_punct = self._options.get("ignore_punct", False)
@@ -135,6 +160,7 @@ class ExactMatchMetric(BaseMetric):
             self.total_count += 1
 
     def result(self) -> float:
+        """Compute the final exact match score."""
         if self.total_count == 0:
             return 0.0
         return self.match_count / self.total_count
@@ -148,10 +174,16 @@ class BLEUScoreMetric(BaseMetric):
         self._collected_labels_tokens: List[List[List[str]]] = [] # List of (list of reference tokens)
 
     def reset_state(self) -> None:
+        """Reset the internal state of the metric."""
         self._collected_predictions_tokens = []
         self._collected_labels_tokens = []
 
     def update_state(self, predictions: List[str], labels: List[Union[str, List[str]]]) -> None:
+        """
+        Update the metric with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         # Predictions are expected as list of strings (sentences)
         # Labels can be list of strings (single ref per pred) or list of list of strings (multiple refs per pred)
         for pred_text, label_item in zip(predictions, labels):

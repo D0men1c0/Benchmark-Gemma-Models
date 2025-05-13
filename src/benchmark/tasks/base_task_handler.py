@@ -47,6 +47,11 @@ class TaskHandler(ABC):
             
     # Generate text using the model
     def _generate_text(self, input_texts: List[str]) -> List[str]:
+        """
+        Generate text using the model.
+        :param input_texts: List of input texts to generate from.
+        :return: List of generated texts.
+        """
         if not input_texts:
             self.logger.warning("No input texts provided for generation.")
             return []

@@ -36,7 +36,16 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
                 data_dir: Optional[str] = None, streaming: bool = False,
                 # Optional hints can be passed via loader_kwargs if needed from config
                 **loader_kwargs):
-
+        """
+        Initialize the dataset loader.
+        :param name: Name of the dataset.
+        :param source_type: Source type (e.g., 'hf_hub', 'local', 'custom').
+        :param config: Optional configuration name for the dataset.
+        :param split: Dataset split to load (e.g., 'train', 'validation').
+        :param data_dir: Directory for local datasets.
+        :param streaming: Whether to load the dataset in streaming mode.
+        :param loader_kwargs: Additional arguments for the dataset loader.
+        """
         if not isinstance(name, str) or len(name.strip()) == 0:
             raise ValueError("Invalid dataset name")
 
@@ -50,10 +59,18 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
     
     @classmethod
     def register_source(cls, source_type: str, loader_fn: Callable):
+        """
+        Register a custom data source loader function.
+        :param source_type: Type of the data source (e.g., 'custom').
+        :param loader_fn: Function to load the dataset from the custom source.
+        """
         cls._SOURCE_REGISTRY[source_type.lower()] = loader_fn
 
     def load(self, task_type: Optional[str] = None) -> Iterable:
-        """Load and normalize the dataset from the configured source."""
+        """
+        Load and normalize the dataset from the configured source.
+        :param task_type: Type of task (e.g., 'classification', 'generation').
+        """
         source_type = self.source_type.lower()
         dataset: Optional[Iterable] = None
 
@@ -72,10 +89,10 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
                 # Apply normalization after loading
                 dataset = self._normalize_dataset(dataset, task_type)
             elif not task_type:
-                 logger.warning("task_type not provided to load(), skipping normalization.")
+                logger.warning("task_type not provided to load(), skipping normalization.")
 
             if dataset is None:
-                 raise RuntimeError("Dataset loading failed.")
+                raise RuntimeError("Dataset loading failed.")
 
             return dataset
 
@@ -111,7 +128,12 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         )
 
     def _normalize_dataset(self, dataset: Iterable, task_type: str) -> Iterable:
-        """Applies normalization (e.g., renaming fields) based on task type."""
+        """
+        Applies normalization (e.g., renaming fields) based on task type.
+        :param dataset: The dataset to normalize.
+        :param task_type: The type of task (e.g., 'classification', 'generation').
+        :return: The normalized dataset.
+        """
         if task_type not in TASK_TYPE_STANDARD_FIELDS:
             logger.warning(f"No standard fields defined for task_type '{task_type}'. Returning dataset as is.")
             return dataset
