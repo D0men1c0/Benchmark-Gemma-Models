@@ -21,7 +21,11 @@ class MultipleChoiceQATaskHandler(TaskHandler):
     """Handles Multiple Choice QA tasks (e.g., MMLU)."""
 
     def _prepare_prompts(self, batch: Dict[str, Any]) -> Tuple[List[str], List[Any]]:
-        """Creates MMLU-style prompts and extracts raw labels."""
+        """
+        Creates MMLU-style prompts and extracts raw labels.
+        :param batch: Batch of data containing questions, choices, and labels.
+        :return: Tuple of prompts and raw labels.
+        """
         questions = _ensure_list(batch.get('question', []))
         # Expects choices as a list of 4 lists (one per choice letter)
         choices_transposed = batch.get('choices', []) # Assume structure is correct or DatasetLoader fixed it
@@ -54,6 +58,11 @@ class MultipleChoiceQATaskHandler(TaskHandler):
         return prompts, raw_labels
 
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Process a batch of data for Multiple Choice QA tasks.
+        :param batch: Batch of data containing questions, choices, and labels.
+        :return: Tuple of generated predictions and raw labels.
+        """
         input_prompts, raw_labels = self._prepare_prompts(batch)
         if not input_prompts:
             return [], [] # No valid prompts could be generated
@@ -78,6 +87,11 @@ class MathReasoningGenerationTaskHandler(TaskHandler):
     """Handles Math Reasoning generation tasks (e.g., GSM8K)."""
 
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Process a batch of data for Math Reasoning tasks.
+        :param batch: Batch of data containing input texts and labels.
+        :return: Tuple of generated predictions and raw labels.
+        """
         input_texts = _ensure_list(batch.get('input_text', []))
         raw_labels = _ensure_list(batch.get('target_text', []))
 
@@ -104,6 +118,11 @@ class SummarizationTaskHandler(TaskHandler):
     """Handles summarization tasks."""
 
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Process a batch of data for summarization tasks.
+        :param batch: Batch of data containing input texts and labels.
+        :return: Tuple of generated predictions and raw labels.
+        """
         input_texts = _ensure_list(batch.get('input_text', []))
         raw_labels = _ensure_list(batch.get('target_text', []))
 
@@ -130,6 +149,11 @@ class TranslationTaskHandler(TaskHandler):
     """Handles translation tasks."""
 
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Process a batch of data for translation tasks.
+        :param batch: Batch of data containing input texts and labels.
+        :return: Tuple of generated predictions and raw labels.
+        """
         input_texts = _ensure_list(batch.get('input_text', []))
         raw_labels = _ensure_list(batch.get('target_text', []))
 
@@ -160,6 +184,11 @@ class ClassificationTaskHandler(TaskHandler):
     """Handles classification tasks."""
 
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[int], List[Any]]: # Predictions are int indices
+        """
+        Process a batch of data for classification tasks.
+        :param batch: Batch of data containing input texts and labels.
+        :return: Tuple of predicted classes and raw labels.
+        """
         # This handler does NOT use text generation (_generate_text)
         input_texts = _ensure_list(batch.get('input_text', []))
         labels = _ensure_list(batch.get('label', [])) # Labels might be int or str depending on dataset

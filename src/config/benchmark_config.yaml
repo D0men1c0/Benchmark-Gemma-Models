@@ -21,7 +21,7 @@ tasks:
         split: "validation"
     evaluation_metrics:
       - name: exact_match # Key metric for this task setup
-        options: { normalize: true, ignore_case: true, ignore_punct: false } # Useful options
+        options: { normalize: true, ignore_case: true, ignore_punct: true } # Useful options
 
   # --- Task 2: GSM8K (Reasoning + Answer Generation) ---
   - name: "GSM8K"
@@ -66,30 +66,6 @@ models:
     size: "7B"
     framework: "huggingface"
     checkpoint: "google/gemma-7b" # Actual HF model ID or path
-    quantization: "4bit"
-    offloading: true
-
-  - name: "gemma-13b" # User-defined name
-    variant: "gemma"
-    size: "13B"
-    framework: "huggingface"
-    checkpoint: "google/gemma-3-12b-it" # Actual HF model ID or path
-    quantization: "8bit"
-    offloading: true
-
-  - name: "llama-2-7b" # User-defined name
-    variant: "llama"
-    size: "7B"
-    framework: "huggingface"
-    checkpoint: "meta-llama/Llama-2-7b-hf" # Example actual HF ID
-    quantization: "4bit"
-    offloading: true
-
-  - name: "mistral-7b" # User-defined name
-    variant: "mistral"
-    size: "7B"
-    framework: "huggingface"
-    checkpoint: "mistralai/Mistral-7B-v0.1" # Example actual HF ID
     quantization: "4bit"
     offloading: true
 

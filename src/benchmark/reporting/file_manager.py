@@ -12,31 +12,50 @@ logger = setup_logger()
 
 # --- Saver Functions ---
 def _save_json(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a JSON file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output JSON file.
+    """
     with open(file_path, "w") as f:
         json.dump(results, f, indent=4)
 
 def _save_yaml(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a YAML file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output YAML file.
+    """
     with open(file_path, "w") as f:
         yaml.safe_dump(results, f, default_flow_style=False)
 
 def _flatten_results(results: Dict[str, Any]) -> List[Dict[str, Any]]:
-     """Helper to flatten results for tabular formats."""
-     flattened = []
-     for model, tasks in results.items():
-         if isinstance(tasks, dict):
-             for task, metrics in tasks.items():
-                  row = {"model": model, "task": task}
-                  if isinstance(metrics, dict):
-                      row.update(metrics)
-                  else:
-                      row["result"] = str(metrics)
-                  flattened.append(row)
-         else:
-              flattened.append({"model": model, "result": str(tasks)})
-     return flattened
+    """
+    Helper to flatten results for tabular formats.
+    :param results: Nested dictionary of benchmark results.
+    :return: List of dictionaries, each representing a row in the table.
+    """
+    flattened = []
+    for model, tasks in results.items():
+        if isinstance(tasks, dict):
+            for task, metrics in tasks.items():
+                row = {"model": model, "task": task}
+                if isinstance(metrics, dict):
+                    row.update(metrics)
+                else:
+                    row["result"] = str(metrics)
+                flattened.append(row)
+        else:
+            flattened.append({"model": model, "result": str(tasks)})
+    return flattened
 
 
 def _save_csv(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a CSV file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output CSV file.
+    """
     flattened = _flatten_results(results)
     if not flattened:
         logger.warning("No data to save to CSV.")
@@ -54,10 +73,20 @@ def _save_csv(results: Dict[str, Any], file_path: Path):
 
 
 def _save_pickle(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a Pickle file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output Pickle file.
+    """
     with open(file_path, "wb") as f:
         pickle.dump(results, f)
 
 def _save_parquet(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a Parquet file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output Parquet file.
+    """
     flattened = _flatten_results(results)
     if not flattened:
         logger.warning("No data to save to Parquet.")
@@ -67,6 +96,11 @@ def _save_parquet(results: Dict[str, Any], file_path: Path):
 
 
 def _save_pdf(results: Dict[str, Any], file_path: Path):
+    """
+    Save results to a PDF file.
+    :param results: Dictionary containing benchmark results.
+    :param file_path: Path to the output PDF file.
+    """
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -107,7 +141,12 @@ def save_results(
     output_dir: str = "results",
     format: str = "json"
 ) -> None:
-    """Saves benchmark results using a registry pattern."""
+    """
+    Saves benchmark results using a registry pattern.
+    :param results: Dictionary containing benchmark results.
+    :param output_dir: Directory to save the results.
+    :param format: Format to save the results. Supported formats: json, yaml, csv, pickle, parquet, pdf.
+    """
     output_dir_path = Path(output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
 

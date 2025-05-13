@@ -21,7 +21,13 @@ class TaskHandlerFactory:
 
     @classmethod
     def register_handler(cls, task_type: str, handler_class: Type[TaskHandler]):
-         cls._handlers[task_type.lower()] = handler_class
+        """
+        Register a new task handler.
+        :param task_type: Type of task (e.g., 'classification', 'generation').
+        :param handler_class: Class of the task handler to register.
+        :raises ValueError: If the task type is already registered.
+        """
+        cls._handlers[task_type.lower()] = handler_class
 
     @classmethod
     def get_handler(

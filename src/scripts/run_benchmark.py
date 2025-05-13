@@ -10,7 +10,11 @@ from config_models import BenchmarkConfig
 from pydantic import ValidationError
 
 def load_config(config_path: Path) -> BenchmarkConfig:
-    """Load and validate configuration file using Pydantic."""
+    """
+    Load and validate configuration file using Pydantic.
+    :param config_path: Path to the YAML configuration file.
+    :return: A validated BenchmarkConfig object.
+    """
     logger = setup_logger(__name__)
     try:
         with open(config_path, "r") as f:

@@ -3,11 +3,15 @@ from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 
 class GeneralConfig(BaseModel):
+    # General parameters for the benchmark
+    # e.g., benchmark name, output directory, random seed
     experiment_name: str = "Benchmark Experiment"
     output_dir: Path = Path("./benchmarks")
     random_seed: Optional[int] = 42
 
 class ReportingConfig(BaseModel):
+    # Reporting parameters for the benchmark
+    # e.g., report format, enabled metrics, etc.
     enabled: bool = True
     format: str = "json"
     leaderboard_enabled: bool = False
@@ -15,6 +19,8 @@ class ReportingConfig(BaseModel):
     output_dir: Path = Path("./reports")
 
 class AdvancedConfig(BaseModel):
+    # Advanced parameters for the benchmark
+    # e.g., multi-GPU, TPU, distributed training, etc.
     enable_multi_gpu: bool = False
     use_tpu: bool = False
     distributed_training: bool = False
@@ -31,6 +37,8 @@ class AdvancedConfig(BaseModel):
     clean_up_tokenization_spaces: bool = True
 
 class DatasetConfig(BaseModel):
+    # Configuration for datasets
+    # e.g., dataset name, type, split, etc.
     name: str
     source_type: str = "hf_hub" # Added default
     config: Optional[str] = None
@@ -40,10 +48,14 @@ class DatasetConfig(BaseModel):
     loader_args: Dict[str, Any] = Field(default_factory=dict)
 
 class MetricConfig(BaseModel):
+    # Configuration for evaluation metrics
+    # e.g., metric name, type, parameters, etc.
     name: str
     options: Dict[str, Any] = Field(default_factory=dict)
 
 class TaskConfig(BaseModel):
+    # Configuration for tasks
+    # e.g., task name, type, datasets, evaluation metrics, etc.
     name: str
     type: str # e.g., "classification", "generation"
     description: Optional[str] = None
@@ -51,6 +63,8 @@ class TaskConfig(BaseModel):
     evaluation_metrics: List[MetricConfig]
 
 class ModelConfig(BaseModel):
+    # Configuration for models
+    # e.g., model name, type, framework, checkpoint, etc.
     name: str
     framework: str
     checkpoint: Optional[str] = None
@@ -60,18 +74,25 @@ class ModelConfig(BaseModel):
     offloading: Optional[bool] = None
 
 class ModelParamsConfig(BaseModel):
-    # Specific parameters for model loading or inference
-    # E.g., generation parameters if not in AdvancedConfig
+    # Configuration for model parameters
+    # e.g., model-specific parameters, tokenizer settings, etc.
     temperature: Optional[float] = None
     top_p: Optional[float] = None
     top_k: Optional[int] = None
     # Add others...
 
+class EvaluationConfig(BaseModel):
+    # Configuration for evaluation
+    # e.g., evaluation parameters, batch size, etc.
+    log_interval: Optional[int]
+
 class BenchmarkConfig(BaseModel):
+    # Main configuration class for the benchmark
+    # e.g., general parameters, tasks, models, evaluation, reporting, etc.
     general: GeneralConfig = Field(default_factory=GeneralConfig)
+    evaluation: Optional[EvaluationConfig] = Field(default_factory=EvaluationConfig)
     tasks: List[TaskConfig]
     models: List[ModelConfig]
     model_parameters: ModelParamsConfig = Field(default_factory=ModelParamsConfig)
-    evaluation: Optional[Dict[str, Any]] = None
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     advanced: AdvancedConfig = Field(default_factory=AdvancedConfig)

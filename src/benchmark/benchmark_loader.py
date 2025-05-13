@@ -37,7 +37,10 @@ class BenchmarkRunner:
             return "cpu"
 
     def _load_all_datasets(self) -> Dict[str, Dict[str, Any]]:
-        """Loads datasets for all tasks defined in the config."""
+        """
+        Loads datasets for all tasks defined in the config.
+        :return: Dictionary of datasets structured as {task_name: {dataset: dataset_instance, streaming: bool}}
+        """
         task_datasets = {}
         self.logger.info("Pre-loading datasets...")
         if not self.config.tasks:
@@ -68,7 +71,11 @@ class BenchmarkRunner:
         return task_datasets
 
     def _load_model_and_tokenizer(self, model_cfg: ModelConfig) -> Optional[Tuple[Any, Any]]:
-        """Loads a single model and tokenizer based on config."""
+        """
+        Loads a single model and tokenizer based on config.
+        :param model_cfg: Configuration for the model to be loaded.
+        :return: Tuple of (model, tokenizer) or None if loading failed.
+        """
         model_name = model_cfg.name
         framework = model_cfg.framework
         quantization = model_cfg.quantization
@@ -95,7 +102,11 @@ class BenchmarkRunner:
             return None
 
     def _cleanup_model_resources(self, model: Optional[Any], tokenizer: Optional[Any]):
-        """Releases model and tokenizer resources."""
+        """
+        Releases model and tokenizer resources.
+        :param model: The model instance to be cleaned up.
+        :param tokenizer: The tokenizer instance to be cleaned up.
+        """
         model_name = getattr(model, 'name_or_path', 'Unknown') # Try to get name for log
         self.logger.info(f"Cleaning up resources for model '{model_name}'...")
         del model
@@ -106,33 +117,120 @@ class BenchmarkRunner:
         self.logger.info(f"Resources cleaned up for model '{model_name}'.")
 
 
-    def _process_batches(self, handler: Any, data_loader: DataLoader, task_name: str) -> Tuple[List[Any], List[Any]]:
-        """Iterates through DataLoader, processes batches, and collects results."""
-        predictions: List[Any] = []
-        labels: List[Any] = []
+    def _process_task_batches(self, handler: Any, data_loader: DataLoader, task_name: str, evaluator: Evaluator) -> bool:
+        """
+        Iterates through DataLoader, processes batches, and updates evaluator with results.
+        Logs intermediate metric scores periodically.
+
+        :param handler: Task handler instance for processing batches.
+        :param data_loader: DataLoader for the dataset (can be a tqdm iterator).
+        :param task_name: Name of the task being processed.
+        :param evaluator: Evaluator instance for updating metrics.
+        :return: True if processing was successful, False if errors occurred that stopped processing.
+        """
         batch_num = 0
-        for batch in data_loader:
+        log_interval_to_use = 0  # Default to 0 (no intermediate logging)
+
+        # Retrieve log_interval from EvaluationConfig instance
+        if self.config.evaluation: # self.config.evaluation should be an EvaluationConfig instance
+            configured_log_interval = self.config.evaluation.log_interval
+
+            if configured_log_interval is not None:
+                if isinstance(configured_log_interval, int) and configured_log_interval > 0:
+                    log_interval_to_use = configured_log_interval
+                else:
+                    # Log a warning if the configured value is invalid but present
+                    self.logger.warning(
+                        f"Invalid log_interval value '{configured_log_interval}' in evaluation config "
+                        f"for task '{task_name}'. Disabling intermediate metric logging."
+                    )
+
+        self.logger.info(
+            f"Starting batch processing for task '{task_name}'. "
+            f"Intermediate log interval: {log_interval_to_use if log_interval_to_use > 0 else 'Disabled'}"
+        )
+        
+        for batch in data_loader:  # data_loader is expected to be iterable (e.g., DataLoader or tqdm(DataLoader))
             batch_num += 1
             try:
                 predictions_batch, labels_batch = handler.process_batch(batch)
-                # Extend results - ensure batch results are lists
-                if predictions_batch is not None:
-                    predictions.extend(predictions_batch if isinstance(predictions_batch, list) else [predictions_batch])
-                if labels_batch is not None:
-                    labels.extend(labels_batch if isinstance(labels_batch, list) else [labels_batch])
+
+                # Ensure predictions and labels are lists for consistent processing
+                if predictions_batch is not None and not isinstance(predictions_batch, list):
+                    predictions_batch = [predictions_batch]
+                if labels_batch is not None and not isinstance(labels_batch, list):
+                    labels_batch = [labels_batch]
+                
+                if predictions_batch is not None and labels_batch is not None:
+                    if len(predictions_batch) != len(labels_batch):
+                        self.logger.warning(
+                            f"Batch {batch_num} for task '{task_name}': predictions ({len(predictions_batch)}) "
+                            f"and labels ({len(labels_batch)}) length mismatch. Skipping batch for evaluation."
+                        )
+                        # Continue to the next batch, but intermediate logging might still occur if interval is met
+                    else:
+                        evaluator.update_batch_metrics(predictions_batch, labels_batch)
+                elif predictions_batch is None or labels_batch is None:
+                    self.logger.warning(
+                        f"Batch {batch_num} for task '{task_name}' produced None for predictions or labels. "
+                        f"Skipping metric update for this batch."
+                    )
+
+                # Log intermediate metrics
+                if log_interval_to_use > 0 and batch_num % log_interval_to_use == 0:
+                    intermediate_results = {}
+                    # Accessing evaluator._metrics_instances directly for logging purposes.
+                    # Consider adding a public method to Evaluator if this feels too coupled.
+                    for metric_name, metric_instance in evaluator._metrics_instances.items():
+                        try:
+                            current_value = metric_instance.result()
+                            # Simple formatting for the log
+                            if isinstance(current_value, float):
+                                formatted_value = f"{current_value:.4f}"
+                            elif isinstance(current_value, dict):
+                                formatted_value = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in current_value.items()])
+                            else:
+                                formatted_value = str(current_value)
+                            intermediate_results[metric_name] = formatted_value
+                        except Exception as e:
+                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name}': {e}")
+                            intermediate_results[metric_name] = "Error"
+                    
+                    if intermediate_results:
+                        log_msg_parts = [f"{name}: {value}" for name, value in intermediate_results.items()]
+                        self.logger.info(
+                            f"Task '{task_name}' - Batch {batch_num}/{getattr(data_loader, '__len__', '?')} - " # Show total batches if available
+                            f"Intermediate Metrics: {{{', '.join(log_msg_parts)}}}"
+                        )
+                        
+                        # Optional: Update tqdm postfix if pbar is passed and is a tqdm instance
+                        # if isinstance(data_loader, tqdm) and hasattr(data_loader, 'set_postfix'):
+                        #     data_loader.set_postfix(intermediate_results, refresh=True)
+
+
             except Exception as e:
-                self.logger.error(f"Error processing batch {batch_num} for task '{task_name}': {e}. Stopping task.", exc_info=True)
-                # Stop processing this task on batch error for safety
-                return [], [] # Return empty lists to indicate failure
-        return predictions, labels
+                self.logger.error(
+                    f"Error processing batch {batch_num} for task '{task_name}': {e}. Stopping task.", 
+                    exc_info=True # Include traceback for easier debugging
+                )
+                return False  # Indicate failure
+
+        self.logger.info(f"Finished batch processing for task '{task_name}'. Processed {batch_num} batches.")
+        return True
 
 
     def _run_task_evaluation(self, model: Any, tokenizer: Any, task_cfg: TaskConfig, dataset_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Runs a single task and evaluates it."""
+        """
+        Runs a single task and evaluates it using batched metric updates.
+        :param model: The model to be evaluated.
+        :param tokenizer: The tokenizer associated with the model.
+        :param task_cfg: Configuration for the task to be run.
+        :param dataset_info: Information about the dataset to be used.
+        :return: Evaluation results or None if an error occurred.
+        """
         task_name = task_cfg.name
         task_type = task_cfg.type
         dataset = dataset_info["dataset"]
-        is_streaming = dataset_info["streaming"]
         self.logger.info(f"Running task '{task_name}'...")
 
         # 1. Get Task Handler
@@ -143,57 +241,53 @@ class BenchmarkRunner:
              self.logger.error(f"Could not get handler for task '{task_name}' (type: {task_type}): {e}")
              return {"error": f"Handler not found: {e}"}
 
-
         # 2. Setup DataLoader
         batch_size = self.config.advanced.batch_size if self.config.advanced else 32
         try:
-            # Determine if dataset is map-style or iterable-style for DataLoader compatibility
             is_map_style = isinstance(dataset, Dataset) and not isinstance(dataset, IterableDataset)
-
             data_loader = DataLoader(
-                dataset,
-                batch_size=batch_size,
-                shuffle=False, # Important for reproducibility
-                num_workers=0, # Safest default, especially for iterable datasets
-                pin_memory=(self.device == 'cuda')
+                dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=(self.device == 'cuda')
             )
         except Exception as e:
             self.logger.error(f"Failed to create DataLoader for task '{task_name}': {e}.", exc_info=True)
             return {"error": f"DataLoader creation failed: {e}"}
 
-        # 3. Process Batches with Progress Bar
+        # 3. Initialize Evaluator and Prepare Metrics
+        eval_params = self.config.evaluation if self.config.evaluation is not None else {}
+        evaluator = Evaluator(evaluation_params=eval_params)
+        formatted_metrics_config = [m.dict(exclude_none=True) for m in task_cfg.evaluation_metrics]
+        evaluator.prepare_metrics(formatted_metrics_config)
+        self.logger.debug(f"Evaluator prepared for task '{task_name}'.")
+
+        # 4. Process Batches with Progress Bar
         total_batches = None
-        if is_map_style and hasattr(dataset, '__len__'): # Only map-style datasets reliably have __len__
+        if is_map_style and hasattr(dataset, '__len__'):
             try:
                 dataset_len = len(dataset)
                 total_batches = (dataset_len + batch_size - 1) // batch_size
-            except TypeError: # Should not happen with is_map_style check, but safety first
+            except TypeError:
                 self.logger.warning(f"Could not determine length for map-style dataset '{task_name}'. Progress bar may be inaccurate.")
 
         progress_desc = f"Task '{task_name}'"
-        with tqdm(total=total_batches, desc=progress_desc, unit="batch", leave=False) as pbar:
-            dataloader_iter = iter(data_loader)
-            progress_bar_iter = (pbar.update(1) or batch for batch in dataloader_iter) if total_batches else dataloader_iter
+        evaluation_successful = True
+        with tqdm(data_loader, total=total_batches, desc=progress_desc, unit="batch", leave=False) as pbar:
+            evaluation_successful = self._process_task_batches(handler, pbar, task_name, evaluator)
 
-            predictions, labels = self._process_batches(handler, progress_bar_iter, task_name) # Pass the potentially wrapped iterator
+        if not evaluation_successful:
+            self.logger.warning(f"Task '{task_name}' processing was not fully successful due to batch errors.")
 
-        if not predictions and not labels:
-            self.logger.warning(f"Task '{task_name}' produced no results (possibly due to batch processing errors or empty dataset).")
-            return None # Indicate no results
-
-        # 4. Evaluate Results
+        # 5. Finalize and Get Results from Evaluator
         try:
-            eval_params = self.config.evaluation or {} # Use evaluation params if provided
-            evaluator = Evaluator(evaluation_params=eval_params)
-            task_results_dict = {"predictions": predictions, "labels": labels}
-            # Ensure metrics are in the correct format (list of dicts)
-            formatted_metrics = [m.dict(exclude_none=True) for m in task_cfg.evaluation_metrics]
-            evaluation_results = evaluator.evaluate(task_results_dict, formatted_metrics)
+            evaluation_results = evaluator.finalize_results()
             self.logger.info(f"Task '{task_name}' evaluation completed. Metrics: {list(evaluation_results.keys())}")
+            if not evaluation_results and evaluation_successful: # check if finalize_results is empty even if processing was ok
+                self.logger.warning(f"Task '{task_name}' produced no evaluation results, though batch processing reported success.")
+                return {"status": "No evaluation results generated"}
             return evaluation_results
         except Exception as e:
-            self.logger.error(f"Failed to evaluate task '{task_name}': {e}", exc_info=True)
-            return {"error": f"Evaluation failed: {e}"}
+            self.logger.error(f"Failed to finalize evaluation for task '{task_name}': {e}", exc_info=True)
+            return {"error": f"Evaluation finalization failed: {e}"}
+        
 
     def _save_results(self):
         """Saves the final benchmark results."""
@@ -216,6 +310,7 @@ class BenchmarkRunner:
     def run(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
         """
         Executes the benchmark: loads datasets, runs models on tasks, evaluates, and saves results.
+        :return: Dictionary of results structured as {model: {task: {metric: value}}}
         """
         # Load all datasets first
         task_datasets = self._load_all_datasets()
