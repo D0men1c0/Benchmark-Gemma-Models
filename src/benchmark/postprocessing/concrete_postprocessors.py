@@ -104,9 +104,9 @@ class GSM8KPostProcessor(BasePostProcessor):
         processed_labels = [_extract_gsm8k_answer(str(label)) for label in labels] # Ensure label is string
         return processed_predictions, processed_labels
 
-# Add other post-processors here if needed (e.g., for Summarization, Translation if specific cleaning is required)
-# Example: Inherit from Default if only basic cleaning is needed
 class SummarizationPostProcessor(DefaultPostProcessor):
+    # No specific processing needed for summarization
     pass
+
 class TranslationPostProcessor(DefaultPostProcessor):
     pass
