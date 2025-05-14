@@ -279,6 +279,23 @@ class BenchmarkRunner:
         # 5. Finalize and Get Results from Evaluator
         try:
             evaluation_results = evaluator.finalize_results()
+            if evaluation_results:
+                # Format the results for logging
+                log_msg_parts = []
+                for metric_name, value in evaluation_results.items():
+                    if isinstance(value, float):
+                        log_msg_parts.append(f"{metric_name}: {value:.4f}")
+                    elif isinstance(value, dict): # For metrics like ROUGE that return a dict
+                        dict_parts = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k,v in value.items()])
+                        log_msg_parts.append(f"{metric_name}: {{{dict_parts}}}")
+                    else:
+                        log_msg_parts.append(f"{metric_name}: {value}")
+                
+                self.logger.info(
+                    f"Final Evaluation Results for Task '{task_name}' on model '{model.name_or_path if hasattr(model, 'name_or_path') else 'Unknown Model'}': "
+                    f"{{{', '.join(log_msg_parts)}}}"
+                )
+                
             self.logger.info(f"Task '{task_name}' evaluation completed. Metrics: {list(evaluation_results.keys())}")
             if not evaluation_results and evaluation_successful: # check if finalize_results is empty even if processing was ok
                 self.logger.warning(f"Task '{task_name}' produced no evaluation results, though batch processing reported success.")
