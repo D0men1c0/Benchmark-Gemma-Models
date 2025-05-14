@@ -1,9 +1,9 @@
-from typing import Dict, Any, Iterable, Optional, Callable
+from typing import Dict, Any, Iterable, List, Optional, Callable
 from datasets import load_dataset as hf_load_dataset
 from datasets import Dataset, IterableDataset
 import os
 from .base_dataset_loader import BaseDatasetLoader
-from utils.logger import setup_logger # Assuming logger setup
+from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -11,42 +11,60 @@ logger = setup_logger(__name__)
 # This mapping drives the normalization logic
 TASK_TYPE_STANDARD_FIELDS = {
     "summarization": {"input": "input_text", "target": "target_text"},
-    "multiple_choice_qa": {"question": "question", "choices": "choices", "label": "label_index"},
+    "multiple_choice_qa": {"question": "question", "choices": "choices", "label": "label_index", "subject": "subject"},
     "math_reasoning_generation": {"input": "input_text", "target": "target_text"},
-    "translation": {"input": "input_text", "target": "target_text"}, # Needs lang hints potentially
-    # Add other task types and their standard fields
+    "translation": {"input": "input_text", "target": "target_text"},
+    "classification": {"input": "input_text", "label": "label_index"}, # For single sentence classification like SST-2, CoLA
+    "text_pair_classification": {"input1": "input_text_pair1", "input2": "input_text_pair2", "label": "label_index"} # For sentence-pair tasks
 }
 
 # Define potential original field names for common datasets
 # This helps the normalizer guess the original names if hints aren't provided
 DEFAULT_ORIGINAL_FIELD_MAP = {
+    # General summarization (can be overridden by more specific ones)
     "summarization": {"input": "article", "target": "highlights"},
-    "multiple_choice_qa": {"question": "question", "choices": "choices", "label": "answer"}, # MMLU default
-    "math_reasoning_generation": {"input": "question", "target": "answer"}, # GSM8K default
-    "translation": {"data_key": "translation", "input_lang": "en", "target_lang": "fr"}, # Example for nested
+    # Specific for cnn_dailymail if its fields were different from general summarization
+    "summarization_cnn_dailymail": {"input": "article", "target": "highlights"},
+
+    "multiple_choice_qa": {"question": "question", "choices": "choices", "label": "answer", "subject": "subject"},
+
+    "math_reasoning_generation_gsm8k": {"input": "question", "target": "answer"},
+
+    # For GLUE tasks (using dataset config name for specificity)
+    "classification_sst2": {"input": "sentence", "label": "label"},
+    "classification_cola": {"input": "sentence", "label": "label"},
+    "text_pair_classification_mrpc": {"input1": "sentence1", "input2": "sentence2", "label": "label"},
+    "text_pair_classification_qqp": {"input1": "question1", "input2": "question2", "label": "label"},
+    "text_pair_classification_mnli": {"input1": "premise", "input2": "hypothesis", "label": "label"},
+    "text_pair_classification_qnli": {"input1": "question", "input2": "sentence", "label": "label"},
+    "text_pair_classification_rte": {"input1": "sentence1", "input2": "sentence2", "label": "label"},
+    # STS-B is regression, label is float, might need special handling for 'label_index' if that's always int
+    "text_pair_classification_stsb": {"input1": "sentence1", "input2": "sentence2", "label": "label"},
+
+    # NOTE: "translation" for opus100 is handled by a special path in _normalize_dataset
+    # because it requires extraction from a nested dict, not just renaming.
 }
 
 class ConcreteDatasetLoader(BaseDatasetLoader):
-    """Concrete implementation of dataset loader with normalization."""
-
     _SOURCE_REGISTRY: Dict[str, Callable] = {}
 
     def __init__(self, name: str, source_type: str = "hf_hub",
-                config: Optional[str] = None, split: str = "train",
-                data_dir: Optional[str] = None, streaming: bool = False,
-                # Optional hints can be passed via loader_kwargs if needed from config
-                **loader_kwargs):
+                 config: Optional[str] = None, split: str = "train",
+                 data_dir: Optional[str] = None, streaming: bool = False,
+                 dataset_specific_fields: Optional[Dict[str, str]] = None,
+                 **loader_kwargs):
         """
-        Initialize the dataset loader.
-        :param name: Name of the dataset.
-        :param source_type: Source type (e.g., 'hf_hub', 'local', 'custom').
-        :param config: Optional configuration name for the dataset.
-        :param split: Dataset split to load (e.g., 'train', 'validation').
-        :param data_dir: Directory for local datasets.
-        :param streaming: Whether to load the dataset in streaming mode.
-        :param loader_kwargs: Additional arguments for the dataset loader.
+        Initializes the dataset loader with the specified parameters.
+        :param name: Dataset name or type (e.g., "glue", "csv")
+        :param source_type: Source type ("hf_hub", "local", or custom)
+        :param config: Dataset subset/configuration
+        :param split: Data split to load
+        :param data_dir: Local directory or file path
+        :param streaming: Enable streaming mode
+        :param dataset_specific_fields: Explicit mapping for input/target fields
+        :param loader_kwargs: Additional kwargs for dataset loader
         """
-        if not isinstance(name, str) or len(name.strip()) == 0:
+        if not isinstance(name, str) or not name.strip():
             raise ValueError("Invalid dataset name")
 
         self.name = name
@@ -55,155 +73,237 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         self.split = split
         self.data_dir = data_dir
         self.streaming = streaming
+        self.dataset_specific_fields = dataset_specific_fields or {}
         self.loader_kwargs = loader_kwargs
-    
+
     @classmethod
     def register_source(cls, source_type: str, loader_fn: Callable):
-        """
-        Register a custom data source loader function.
-        :param source_type: Type of the data source (e.g., 'custom').
-        :param loader_fn: Function to load the dataset from the custom source.
-        """
+        """Registers a custom loader function."""
         cls._SOURCE_REGISTRY[source_type.lower()] = loader_fn
 
     def load(self, task_type: Optional[str] = None) -> Iterable:
         """
-        Load and normalize the dataset from the configured source.
-        :param task_type: Type of task (e.g., 'classification', 'generation').
+        Loads and optionally normalizes the dataset.
+        :param task_type: Task type for field normalization
+        :return: Loaded (and optionally normalized) dataset
         """
-        source_type = self.source_type.lower()
-        dataset: Optional[Iterable] = None
-
+        logger.info(f"Loading dataset: {self.name} (config: {self.config}, split: {self.split})")
         try:
-            if source_type in self._SOURCE_REGISTRY:
-                # Custom loaders should ideally also perform normalization
-                dataset = self._load_custom(source_type)
-            elif source_type == "hf_hub":
-                dataset = self._load_hf_dataset()
-            elif source_type == "local":
-                dataset = self._load_local_files()
-            else:
-                raise ValueError(f"Unsupported source: {source_type}")
+            dataset = self._load_dataset_by_source()
+            if not dataset:
+                raise RuntimeError(f"Dataset loading failed: {self.name} (config: {self.config})")
 
-            if dataset and task_type:
-                # Apply normalization after loading
-                dataset = self._normalize_dataset(dataset, task_type)
-            elif not task_type:
-                logger.warning("task_type not provided to load(), skipping normalization.")
-
-            if dataset is None:
-                raise RuntimeError("Dataset loading failed.")
-
-            return dataset
-
+            return self._normalize_dataset(dataset, task_type) if task_type else dataset
         except Exception as e:
-            logger.error(f"Failed during dataset loading or normalization for {self.name}: {e}", exc_info=True)
-            raise # Re-raise the exception
+            logger.error(f"Dataset loading/normalization failed: {e}", exc_info=True)
+            raise
 
-    def _load_hf_dataset(self):
+    def _load_dataset_by_source(self) -> Iterable:
+        """
+        Loads the dataset based on the specified source type.
+        :return: Loaded dataset
+        """
+        source = self.source_type.lower()
+        if source in self._SOURCE_REGISTRY:
+            return self._SOURCE_REGISTRY[source](**self._base_loader_args())
+        if source == "hf_hub":
+            return self._load_hf_dataset()
+        if source == "local":
+            return self._load_local_files()
+        raise ValueError(f"Unsupported source_type: {self.source_type}")
+
+    def _base_loader_args(self) -> Dict:
+        """
+        Constructs base arguments for dataset loading.
+        :return: Dictionary of base arguments
+        """
+        return {
+            "name": self.name, "config": self.config,
+            "split": self.split, "data_dir": self.data_dir,
+            "streaming": self.streaming, **self.loader_kwargs
+        }
+
+    def _load_hf_dataset(self) -> Iterable:
+        """
+        Loads dataset from Hugging Face Hub.
+        :return: Loaded dataset
+        """
         return hf_load_dataset(
-            self.name,
-            name=self.config, # Use 'name' arg for HF config
-            split=self.split,
-            streaming=self.streaming,
-            **self.loader_kwargs
+            path=self.name, name=self.config, split=self.split,
+            streaming=self.streaming, **self.loader_kwargs
         )
 
-    def _load_local_files(self):
+    def _load_local_files(self) -> Iterable:
+        """
+        Loads dataset from local files or directories.
+        :return: Loaded dataset
+        """
         if not self.data_dir or not os.path.exists(self.data_dir):
             raise ValueError(f"Invalid data dir: {self.data_dir}")
+        is_dir = os.path.isdir(self.data_dir)
         return hf_load_dataset(
-            self.name, # Assumes format like 'csv', 'json' is the name
-            data_dir=self.data_dir,
-            split=self.split,
-            streaming=self.streaming,
-            **self.loader_kwargs
-        )
-
-    def _load_custom(self, source_type: str):
-        return self._SOURCE_REGISTRY[source_type](
-            name=self.name, config=self.config, split=self.split,
-            data_dir=self.data_dir, streaming=self.streaming,
+            path_or_type=self.name,
+            data_dir=self.data_dir if is_dir else None,
+            data_files=self.data_dir if not is_dir else None,
+            split=self.split, streaming=self.streaming,
             **self.loader_kwargs
         )
 
     def _normalize_dataset(self, dataset: Iterable, task_type: str) -> Iterable:
         """
-        Applies normalization (e.g., renaming fields) based on task type.
-        :param dataset: The dataset to normalize.
-        :param task_type: The type of task (e.g., 'classification', 'generation').
-        :return: The normalized dataset.
+        Normalizes the dataset fields based on the task type.
+        :param dataset: The dataset to normalize
+        :param task_type: Type of ML task (e.g., classification, translation)
+        :return: Normalized dataset
         """
+        logger.debug(f"Normalizing dataset '{self.name}' (config: '{self.config}') for task '{task_type}'")
         if task_type not in TASK_TYPE_STANDARD_FIELDS:
-            logger.warning(f"No standard fields defined for task_type '{task_type}'. Returning dataset as is.")
             return dataset
 
-        standard_fields = TASK_TYPE_STANDARD_FIELDS[task_type]
-        default_originals = DEFAULT_ORIGINAL_FIELD_MAP.get(task_type, {})
-        # hints = self.normalization_hints # Use hints if provided
+        if task_type == "translation" and self.name == "opus100":
+            return self._normalize_opus100(dataset)
 
-        # This needs refinement for streaming datasets and complex types
-        if isinstance(dataset, (Dataset, IterableDataset)):
-            try:
-                # Determine the columns to rename
-                rename_map = {}
-                current_columns = []
-                if hasattr(dataset, 'column_names'):
-                    current_columns = dataset.column_names
-                elif hasattr(dataset, 'features') and dataset.features:
-                    current_columns = list(dataset.features.keys())
+        rename_map = self._build_rename_map(dataset, task_type)
+        if not rename_map:
+            return dataset
 
-                if not current_columns and isinstance(dataset, IterableDataset):
-                    # For iterable datasets, we might need to inspect the first element
-                    # This is less reliable and might consume the first element if not careful
-                    logger.warning("Cannot reliably get column names for IterableDataset without inspection. Normalization might be incomplete.")
-                    # Example: first_item = next(iter(dataset)) if dataset else None
-                    #          if first_item: current_columns = list(first_item.keys()) ... then need to prepend first_item
-                    # For now, we'll rely on defaults/hints for iterable if no features available
-                elif not current_columns:
-                    logger.warning(f"Could not determine columns for dataset {self.name}. Skipping renaming.")
-                    return dataset
+        return self._apply_renaming(dataset, rename_map, task_type)
 
-                # Map standard roles (input, target, etc.) to original names
-                # Priority: Hint -> Default -> Standard Name itself
-                for standard_role, standard_name in standard_fields.items():
-                    # original_name = hints.get(standard_role, default_originals.get(standard_role, standard_name))
-                    # Simplified: Use default original name if available, else assume standard name exists
-                    original_name = default_originals.get(standard_role, standard_name)
+    def _normalize_opus100(self, dataset: Iterable) -> Iterable:
+        """
+        Normalizes the OPUS-100 dataset by extracting input and target text from the translation field.
+        :param dataset: The OPUS-100 dataset to normalize
+        :return: Normalized dataset with input_text and target_text fields.
+        """
+        if not self.config or '-' not in self.config:
+            logger.error(f"Missing or invalid OPUS-100 config: {self.config}")
+            return dataset
+        src, tgt = self.config.split('-', 1)
 
-                    if original_name in current_columns and original_name != standard_name:
-                        rename_map[original_name] = standard_name
-                    elif standard_name not in current_columns and original_name not in current_columns:
-                        logger.warning(f"Field for standard role '{standard_role}' ('{standard_name}' or default '{original_name}') not found in dataset columns: {current_columns} for task type '{task_type}'.")
+        def map_fn(example):
+            trans = example.get("translation", {})
+            return {
+                "input_text": trans.get(src),
+                "target_text": trans.get(tgt)
+            } if src in trans and tgt in trans else {
+                "input_text": None, "target_text": None
+            }
 
-                if rename_map:
-                    logger.info(f"Applying field renaming for task '{task_type}': {rename_map}")
-                    if isinstance(dataset, Dataset): # Map-style dataset
-                        # remove_columns needs care not to remove something needed by another rename
-                        cols_to_remove = [orig for orig in rename_map.keys() if orig not in rename_map.values()]
-                        return dataset.rename_columns(rename_map).remove_columns(cols_to_remove)
-                    elif isinstance(dataset, IterableDataset) and hasattr(dataset, 'rename_columns'):
-                        # rename_columns might not be available or fully functional on all iterables
-                        cols_to_remove = [orig for orig in rename_map.keys() if orig not in rename_map.values()]
-                        try:
-                            # Note: remove_columns might also not work reliably on IterableDatasets
-                            return dataset.rename_columns(rename_map) # .remove_columns(cols_to_remove)
-                        except Exception as map_err:
-                            logger.error(f"Failed to apply rename_columns on IterableDataset: {map_err}. Falling back to per-example mapping.")
-                            # Fallback to map if rename fails (slower for iterable)
-                            def map_example(example):
-                                new_example = example.copy()
-                                for old, new in rename_map.items():
-                                    if old in new_example:
-                                        new_example[new] = new_example.pop(old)
-                                return new_example
-                            return dataset.map(map_example) # remove_columns difficult here
-                    else:
-                        logger.warning("Dataset type does not support efficient renaming. Skipping.")
+        if isinstance(dataset, IterableDataset):
+            logger.info("Applying map to IterableDataset for OPUS-100 (no caching for map function).")
+            dataset = dataset.map(map_fn)
+        else:
+            dataset = dataset.map(map_fn, load_from_cache_file=True, remove_columns=list(dataset.column_names))
 
-            except Exception as e:
-                logger.error(f"Error during dataset field normalization for task '{task_type}': {e}", exc_info=True)
-                # Decide whether to return original dataset or raise error
-                return dataset # Return original on error
-
+        dataset = dataset.filter(lambda ex: ex["input_text"] is not None and ex["input_text"] != "" and \
+                                            ex["target_text"] is not None and ex["target_text"] != "")
+        logger.info(f"OPUS-100 features after normalization: {dataset.features if hasattr(dataset, 'features') else 'IterableDataset (features not directly available)'}")
         return dataset
+
+    def _build_rename_map(self, dataset: Iterable, task_type: str) -> Dict[str, str]:
+        """
+        Constructs a mapping of original field names to standard field names for the dataset.
+        :param dataset: The dataset to inspect
+        :param task_type: Type of ML task (e.g., classification, translation)
+        :return: Mapping of original field names to standard field names
+        """
+        rename_map = {}
+        standard_map = TASK_TYPE_STANDARD_FIELDS[task_type]
+        columns = self._get_columns(dataset)
+
+        for role, standard in standard_map.items():
+            original = self._get_original_field_name(task_type, role)
+            if original and original in columns and original != standard:
+                rename_map[original] = standard
+        return rename_map
+
+    def _apply_renaming(self, dataset: Iterable, rename_map: Dict[str, str], task_type: str) -> Iterable:
+        """
+        Applies the renaming of fields in the dataset based on the provided mapping.
+        :param dataset: The dataset to rename fields
+        :param rename_map: Mapping of original field names to new field names
+        :param task_type: Type of ML task (e.g., classification, translation)
+        :return: Dataset with renamed fields
+        """
+        try:
+            if isinstance(dataset, IterableDataset):
+                logger.warning(f"Renaming fields via mapping for IterableDataset: {self.name} (no caching for map function)")
+
+                def rename_iterable_example(ex): # Define the lambda as a proper function for clarity
+                    new_ex = ex.copy() # Work on a copy
+                    for old, new in rename_map.items():
+                        if old in new_ex:
+                            new_ex[new] = new_ex.pop(old)
+                    return new_ex
+
+                return dataset.map(rename_iterable_example)
+
+            # For Map-style Dataset
+            dataset = dataset.rename_columns(rename_map)
+            logger.info(f"Applied rename_map: {rename_map}. Columns after rename: {list(dataset.column_names)}")
+
+            # Determine columns to keep and remove for map-style datasets
+            standard_fields_values = list(TASK_TYPE_STANDARD_FIELDS.get(task_type, {}).values())
+            if not standard_fields_values: # Should not happen if task_type is valid
+                logger.warning(f"No standard fields defined for task_type '{task_type}' when trying to remove columns.")
+                return dataset
+
+            columns_to_remove = [
+                col for col in dataset.column_names if col not in standard_fields_values
+            ]
+            if columns_to_remove:
+                logger.info(f"Removing columns after rename: {columns_to_remove}")
+                dataset = dataset.remove_columns(columns_to_remove)
+            else:
+                logger.info(f"No columns to remove after renaming. Keeping: {list(dataset.column_names)}")
+
+            return dataset
+        except Exception as e:
+            logger.error(f"Renaming or column removal error for task '{task_type}', dataset '{self.name}': {e}", exc_info=True)
+            return dataset # Return original dataset on error
+
+    def _get_columns(self, dataset: Iterable) -> List[str]:
+        """
+        Retrieves the column names from the dataset.
+        :param dataset: The dataset to inspect
+        :return: List of column names.
+        """
+        if hasattr(dataset, 'column_names'):
+            return list(dataset.column_names)
+        if hasattr(dataset, 'features'):
+            return list(dataset.features.keys())
+        return []
+
+    def _get_original_field_name(self, task_type: str, standard_role: str) -> Optional[str]:
+        """
+        Determines the original field name in the dataset for a given standard role.
+        Resolution priority:
+        1. Explicit 'dataset_specific_fields' from YAML configuration.
+        2. 'DEFAULT_ORIGINAL_FIELD_MAP' using a task-specific and dataset-identifier-specific key.
+        3. 'DEFAULT_ORIGINAL_FIELD_MAP' using a general task-specific key.
+
+        :param task_type: Type of ML task (e.g., "classification", "translation").
+        :param standard_role: Logical field role to resolve (e.g., "input", "target", "label").
+        :return: Original dataset field name if a mapping is found, otherwise None.
+        """
+        if standard_role in self.dataset_specific_fields:
+            return self.dataset_specific_fields.get(standard_role)
+        
+        # 1. Check for explicit mapping in dataset_specific_fields
+        dataset_identifier = self.config if self.name in ["glue", "super_glue"] and self.config else self.name
+        
+        # 2. Task-specific and dataset-identifier-specific mapping
+        specific_map_key = f"{task_type}_{dataset_identifier}"
+        if specific_map_key in DEFAULT_ORIGINAL_FIELD_MAP:
+            task_specific_map = DEFAULT_ORIGINAL_FIELD_MAP[specific_map_key]
+            if standard_role in task_specific_map:
+                return task_specific_map[standard_role]
+
+        # 3. Task-specific general mapping
+        general_task_map_key = task_type
+        if general_task_map_key in DEFAULT_ORIGINAL_FIELD_MAP:
+            general_map = DEFAULT_ORIGINAL_FIELD_MAP[general_task_map_key]
+            if standard_role in general_map:
+                return general_map[standard_role]
+        
+        return None
