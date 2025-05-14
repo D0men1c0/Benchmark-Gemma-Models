@@ -2,101 +2,164 @@
 # General Configuration
 # ============================
 general:
-  experiment_name: "Gemma_Benchmark_2025"
-  output_dir: "./benchmarks"
+  experiment_name: "Gemma_Benchmark_Comprehensive_2025"
+  output_dir: "./benchmarks_output"
   random_seed: 42
 
 # ============================
 # Benchmark Tasks Configuration
 # ============================
 tasks:
-  # --- Task 1: MMLU (as Letter Generation) ---
-  - name: "MMLU (Generation - Anatomy Subset)"
-    type: "multiple_choice_qa"  # Use the specific type for the TaskHandlerFactory
-    description: "MMLU (Anatomy subset) evaluated via letter generation."
+  # --- Task 1: MMLU (Multiple Choice QA) ---
+  - name: "MMLU (Anatomy Subset - Templated)"
+    type: "multiple_choice_qa"
+    description: "MMLU (Anatomy) via templated letter generation."
     datasets:
       - name: "cais/mmlu"
         source_type: "hf_hub"
-        config: "anatomy"      # USE ONLY ONE SUBSET (e.g., anatomy) for testing! 'all' is too long.
+        config: "anatomy"
         split: "validation"
+    handler_options:
+      prompt_builder_type: "mmlu" # Uses MMLUPromptBuilder
+      prompt_template: |
+        The following is a multiple-choice question about {subject}.
+        Please choose the letter of the correct answer.
+        Question: {question}
+        Choices:
+        {choices_formatted_str}
+        Answer:
+      default_subject: "the following topic"
     evaluation_metrics:
-      - name: exact_match # Key metric for this task setup
-        options: { normalize: true, ignore_case: true, ignore_punct: true } # Useful options
+      - name: exact_match
+        options: { normalize: true, ignore_case: true, ignore_punct: true }
 
-  # --- Task 2: GSM8K (Reasoning + Answer Generation) ---
-  - name: "GSM8K"
-    type: "math_reasoning_generation" # Use the specific type for the TaskHandlerFactory
-    description: "Grade school math problems requiring reasoning steps."
+  # --- Task 2: GSM8K (Math Reasoning) ---
+  - name: "GSM8K (Templated)"
+    type: "math_reasoning_generation"
+    description: "Grade school math problems with templated prompt."
     datasets:
       - name: "gsm8k"
         source_type: "hf_hub"
         config: "main"
         split: "test"
+    handler_options:
+      prompt_builder_type: "default"
+      prompt_template: "Solve the following math problem step-by-step. Your final answer should be a number, formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
+      # postprocessor_key: "gsm8k" # Optional override
     evaluation_metrics:
       - name: exact_match
         options: { normalize: true, ignore_case: true, ignore_punct: true }
       - name: distinct_ngram
         options: { ngrams: [1, 2] }
 
-  # --- Task 3: Summarization (To test ROUGE, BERTScore etc.) ---
-  - name: "CNN/DailyMail Summarization (Sample)"
-    type: "summarization" # Use the specific type for the TaskHandlerFactory
-    description: "Abstractive summarization benchmark on news articles (small sample)."
+  # --- Task 3: Summarization (CNN/DailyMail) ---
+  - name: "CNN/DailyMail Summarization"
+    type: "summarization"
+    description: "Abstractive summarization of news articles."
     datasets:
-      - name: "cnn_dailymail"       
+      - name: "cnn_dailymail"
         source_type: "hf_hub"
-        config: "3.0.0"           
-        split: "test"       
+        config: "3.0.0"
+        split: "test"
+    handler_options:
+      prompt_builder_type: "default"
+      prompt_template: "Summarize the following article in a few sentences:\n\nArticle: {article_text}\n\nSummary:"
     evaluation_metrics:
       - name: rouge
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
-          stats: ['f']
+          stats: ['f', 'p', 'r'] # Added precision and recall
       - name: bert_score
-        options: { lang: "en" }
+        options: { lang: "en" } # Ensure lang matches dataset language
       - name: distinct_ngram
-        options: { ngrams: [1, 2] }
+        options: { ngrams: [1, 2, 3] }
+
+  # --- Task 4: Translation (OPUS-100 English to French) ---
+  - name: "OPUS-100 English-to-French"
+    type: "translation"
+    description: "Translate sentences from English to French using OPUS-100."
+    datasets:
+      - name: "opus100"
+        source_type: "hf_hub"
+        config: "en-fr" # This is passed as 'dataset_config_name' to the handler
+        split: "validation"
+    handler_options:
+      prompt_builder_type: "translation" # Uses TranslationPromptBuilder
+      prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}: {input_text}"
+      # postprocessor_key: "translation" # Optional override
+    evaluation_metrics:
+      - name: bleu
+        options: {} # Uses default BLEU settings in your metric
+      - name: meteor
+        options: {} # Uses default METEOR settings
+
+  # --- Task 5: GLUE SST-2 (Sentiment Classification) ---
+  - name: "GLUE-SST-2 (Sentiment)"
+    type: "classification" # Uses ClassificationTaskHandler
+    description: "GLUE Stanford Sentiment Treebank - Binary Sentiment Classification."
+    datasets:
+      - name: "glue"
+        source_type: "hf_hub"
+        config: "sst2"       # This is passed as 'dataset_config_name'
+        split: "validation"
+    evaluation_metrics:
+      - name: accuracy
+        options: {}
+
+  # --- Task 6: GLUE MRPC (Paraphrase Detection - Text Pair Classification) ---
+  - name: "GLUE-MRPC (Paraphrase)"
+    type: "text_pair_classification" # Requires a TextPairClassificationTaskHandler
+    description: "GLUE Microsoft Research Paraphrase Corpus - Paraphrase Detection."
+    datasets:
+      - name: "glue"
+        source_type: "hf_hub"
+        config: "mrpc"      
+    evaluation_metrics:
+      - name: accuracy
+        options: {}
+      - name: f1_score
+        options: { average: "binary" } # MRPC is binary classification
 
 # ============================
 # Models Configuration
 # ============================
 models:
-  - name: "gemma-7b" # User-defined name for results reporting
+  - name: "gemma-7b"
     variant: "gemma"
     size: "7B"
     framework: "huggingface"
-    checkpoint: "google/gemma-7b" # Actual HF model ID or path
+    checkpoint: "google/gemma-7b"
     quantization: "4bit"
     offloading: true
+  # Add other models here if you want to compare
+  # - name: "gemma-2b"
+  #   variant: "gemma"
+  #   size: "2B"
+  #   framework: "huggingface"
+  #   checkpoint: "google/gemma-2b"
+  #   quantization: "8bit" # Or "4bit" or None
+  #   offloading: true
 
 # ============================
-# Model Parameters Configuration
+# Model Parameters Configuration (Global for model loading, not generation)
 # ============================
 model_parameters:
-  # Parameters for model loading/inference (e.g., generation config)
-  # batch_size: 4 # Suggest moving batch_size to 'advanced' section
-  max_input_length: 512 # Note: Actual truncation might depend on TaskHandler logic
-  max_output_length: 512 # Note: Actual generation length often controlled by TaskHandler args
-  #temperature: 0.7
-  #top_p: 0.9
-  #top_k: 50
-  # Consider moving TaskHandler params like max_new_tokens, num_beams here if reorganized
+  max_input_length: 512 # Used by some model loaders, but tokenizer truncation in TaskHandler is key
+  max_output_length: 512 # Generic, but actual generation length is by max_new_tokens
 
 # ============================
 # Evaluation Configuration
 # ============================
 evaluation:
-  # Parameters specific to the evaluation process itself (if any)
-  # batch_size: 16 # Only if evaluation needs a *different* batch size than inference
-  log_interval: 100
+  log_interval: 5 # Log intermediate metrics every 5 batches
 
 # ============================
 # Results and Reporting
 # ============================
 reporting:
   enabled: true
-  format: "pdf" # Or "json", "csv", etc.
-  leaderboard_enabled: true
+  format: "json" # Or "pdf", "csv"
+  leaderboard_enabled: false
   generate_visuals:
     charts: true
     tables: true
@@ -104,20 +167,21 @@ reporting:
   output_dir: "./reports"
 
 # ============================
-# Advanced Settings (Runtime/Environment)
+# Advanced Settings (Global runtime/generation parameters for TaskHandlers)
 # ============================
 advanced:
   enable_multi_gpu: false
   use_tpu: false
   distributed_training: false
-  batch_size: 8 # Main batch size for DataLoader/inference
-  # TaskHandler/Tokenizer/Generate parameters could be moved from ModelParamsConfig or defined here
-  truncation: true
-  padding: true
-  generate_max_length: 512 # Max length potentially used by tokenizer/generator
-  skip_special_tokens: true
-  max_new_tokens: 50 # Max tokens to generate *new*
+  batch_size: 8       # Main batch_size for DataLoader/inference
+  truncation: true    # For tokenizer
+  padding: true       # For tokenizer ("longest" or a max_length strategy)
+  generate_max_length: 512 # Max length for tokenizer input processing in TaskHandler's _generate_text
+  skip_special_tokens: true # For tokenizer.decode
+  max_new_tokens: 50  # Max *new* tokens for model.generate(). This is quite short for GSM8K/Summarization.
+                      # Consider increasing this globally or allowing override in task_cfg.handler_options
+                      # if your TaskHandlers can use such overrides.
   num_beams: 1
   do_sample: false
-  use_cache: false # Can set to true for faster generation (uses more memory)
+  use_cache: true     # Setting to true is generally recommended for faster generation, uses more VRAM.
   clean_up_tokenization_spaces: true
