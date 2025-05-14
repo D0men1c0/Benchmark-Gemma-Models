@@ -45,6 +45,7 @@ class DatasetConfig(BaseModel):
     split: str = "validation"
     data_dir: Optional[Path] = None
     streaming: bool = True
+    dataset_specific_fields: Optional[Dict[str, str]] = None
     loader_args: Dict[str, Any] = Field(default_factory=dict)
 
 class MetricConfig(BaseModel):
@@ -61,6 +62,7 @@ class TaskConfig(BaseModel):
     description: Optional[str] = None
     datasets: List[DatasetConfig]
     evaluation_metrics: List[MetricConfig]
+    handler_options: Optional[Dict[str, Any]] = None
 
 class ModelConfig(BaseModel):
     # Configuration for models

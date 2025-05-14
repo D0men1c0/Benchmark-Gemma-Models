@@ -1,42 +1,112 @@
 import logging
 import sys
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, Dict
 
-# Cache to avoid duplicate handlers
-_loggers = {}
-
-def setup_logger(name: str = 'benchmark', level: int = logging.INFO) -> logging.Logger:
+class LoggerManager:
     """
-    Set up the logger with a basic configuration. Avoids duplicate handlers.
-
-    :param name: Name for the logger.
-    :param level: Logging level (e.g., logging.INFO, logging.DEBUG).
-    :return: Configured logger instance.
+    Singleton manager to configure and retrieve loggers with optional
+    console and shared file handlers.
     """
-    # If the logger already exists and is configured, return it
-    if name in _loggers:
-        return _loggers[name]
+    _instance: Optional['LoggerManager'] = None
 
-    # Otherwise, create and configure a new logger
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.propagate = False  # Prevent messages from being passed to the root logger
+    def __new__(cls, log_dir: str = 'run_logs', file_name: Optional[str] = None):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._init(log_dir, file_name)
+        return cls._instance
 
-    # Configure the handler only if it doesn't already have one of the same type
-    if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
-        ch = logging.StreamHandler(sys.stdout) # Use sys.stdout explicitly
-        ch.setLevel(level)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
+    def _init(self, log_dir: str, file_name: Optional[str]):
+        self.log_dir = Path(log_dir)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Add the configured logger to the cache
-    _loggers[name] = logger
-    return logger
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        safe_name = file_name or f'benchmark_{timestamp}.log'
+        self.file_path = self.log_dir / safe_name
+        self._file_handler = self._create_file_handler()
+        self._loggers: Dict[str, logging.Logger] = {}
 
-# Convenience function to set the global log level (optional)
-def set_global_log_level(level: int):
-    """Sets the level for all cached loggers."""
-    for logger in _loggers.values():
+    def _create_file_handler(self) -> logging.FileHandler:
+        fh = logging.FileHandler(self.file_path, mode='a')
+        fh.setFormatter(
+            logging.Formatter(
+               '%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s'
+            )
+        )
+        return fh
+
+    def get_logger(
+        self,
+        name: str,
+        level: int = logging.INFO,
+        console: bool = True,
+        to_file: bool = True
+    ) -> logging.Logger:
+        """
+        Return a logger configured with optional console and shared file handler.
+
+        :param name: Logger name.
+        :param level: Logging level.
+        :param console: Attach a console handler if True.
+        :param to_file: Attach shared file handler if True.
+        :return: Configured logger.
+        """
+        if name in self._loggers:
+            logger = self._loggers[name]
+            logger.setLevel(level)
+            return logger
+
+        logger = logging.getLogger(name)
         logger.setLevel(level)
-        for handler in logger.handlers:
-            handler.setLevel(level)
+        logger.propagate = False
+
+        if console:
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(level)
+            ch.setFormatter(
+                logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            )
+            logger.addHandler(ch)
+
+        if to_file:
+            self._file_handler.setLevel(level)
+            logger.addHandler(self._file_handler)
+
+        self._loggers[name] = logger
+        return logger
+
+    def set_global_level(self, level: int) -> None:
+        """
+        Update level for all managed loggers and shared file handler.
+
+        :param level: New logging level.
+        """
+        for logger in self._loggers.values():
+            logger.setLevel(level)
+            for handler in logger.handlers:
+                handler.setLevel(level)
+        self._file_handler.setLevel(level)
+
+
+def setup_logger(
+    name: str = 'benchmark_default',
+    level: int = logging.INFO,
+    console: bool = True,
+    to_file: bool = True,
+    log_dir: str = 'run_logs',
+    file_name: Optional[str] = None
+) -> logging.Logger:
+    """
+    Convenience function to get a configured logger via LoggerManager.
+
+    :param name: Logger name.
+    :param level: Logging level.
+    :param console: Enable console handler.
+    :param to_file: Enable shared file handler.
+    :param log_dir: Directory for shared log file.
+    :param file_name: Specific file name for shared log file.
+    :return: Configured logger.
+    """
+    manager = LoggerManager(log_dir=log_dir, file_name=file_name)
+    return manager.get_logger(name=name, level=level, console=console, to_file=to_file)

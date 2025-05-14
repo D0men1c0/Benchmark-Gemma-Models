@@ -1,5 +1,4 @@
 import torch
-from transformers import BitsAndBytesConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, TFAutoModelForCausalLM
 from typing import Tuple, Any, Optional
 from .base_model_loader import BaseModelLoader
@@ -16,7 +15,7 @@ class HuggingFaceModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 
@@ -29,12 +28,14 @@ class HuggingFaceModelLoader(BaseModelLoader):
         """
         self.logger.info(f"Loading model: {self.model_name} with quantization: {quantization}")
         if quantization == "4bit":
+            from transformers import BitsAndBytesConfig
             quantization_config = BitsAndBytesConfig(load_in_4bit=True, 
                                                      bnb_4bit_compute_dtype=torch.float16, 
                                                      bnb_4bit_quant_type="nf4",
                                                      bnb_4bit_use_double_quant=True)
             self.kwargs["quantization_config"] = quantization_config
         elif quantization == "8bit":
+            from transformers import BitsAndBytesConfig
             quantization_config = BitsAndBytesConfig(load_in_8bit=True,
                                                      bnb_8bit_compute_dtype=torch.float16,
                                                      bnb_8bit_quant_type="dynamic",
@@ -58,7 +59,7 @@ class PyTorchModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 
@@ -88,7 +89,7 @@ class TensorFlowModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 
