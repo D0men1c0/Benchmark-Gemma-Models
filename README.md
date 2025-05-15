@@ -72,6 +72,7 @@ The architecture is designed for clarity, maintainability, and extensibility. Ke
 ### 1. Clone Repository
 ```
 git clone https://github.com/D0men1c0/Benchmark-Gemma-Models
+cd Benchmark-Gemma-Models
 ```
 ### 2. Installation Dependencies
 ```bash
