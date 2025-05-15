@@ -339,7 +339,8 @@ class METEORScoreMetric(ListAccumulatingMetric):
     """Class for computing METEOR score."""
     def result(self) -> float:
         from nltk.translate.meteor_score import meteor_score # Import here to avoid error if NLTK/meteor not fully set up
-
+        import nltk
+        nltk.download('wordnet', quiet=True) # Ensure wordnet is available for METEOR
         if not self._collected_predictions or not self._collected_labels:
             return 0.0
 

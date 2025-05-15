@@ -72,9 +72,9 @@ class BenchmarkRunner:
 
     def _load_model_and_tokenizer(self, model_cfg: ModelConfig) -> Optional[Tuple[Any, Any]]:
         """
-        Loads a single model and tokenizer based on config.
+        Loads the model and tokenizer based on the provided configuration.
         :param model_cfg: Configuration for the model to be loaded.
-        :return: Tuple of (model, tokenizer) or None if loading failed.
+        :return: Tuple of (model, tokenizer) if successful, None otherwise.
         """
         model_name = model_cfg.name
         framework = model_cfg.framework
@@ -85,17 +85,36 @@ class BenchmarkRunner:
             model_loader = ModelLoaderFactory.get_model_loader(
                 model_name=model_cfg.checkpoint or model_name,
                 framework=framework,
-                quantization=quantization, # Pass quantization here
+                quantization=quantization, 
                 **model_load_params
             )
-            # Let the loader handle quantization details internally now
             model, tokenizer = model_loader.load(quantization=quantization)
 
-            # Move model to device (unless handled by loader/DataParallel)
-            if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to'):
-                 model.to(self.device)
+            device_placement_handled_by_loader = False
+            if model_cfg.quantization in ["4bit", "8bit"]: # Check original config
+                device_placement_handled_by_loader = True
+                self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
+            elif hasattr(model, 'hf_device_map') and model.hf_device_map is not None:
+                device_placement_handled_by_loader = True
+                self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
 
-            self.logger.info(f"Model '{model_name}' loaded successfully on device '{self.device}'.")
+            if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to') and not device_placement_handled_by_loader:
+                self.logger.info(f"Moving model '{model_name}' to device '{self.device}'.")
+                model.to(self.device)
+            
+            # Determine final device for logging
+            final_device_info = "N/A"
+            if hasattr(model, 'device'):
+                final_device_info = str(model.device)
+            elif hasattr(model, 'hf_device_map') and model.hf_device_map:
+                 # For models with device_map, report the map or a summary
+                final_device_info = f"distributed via hf_device_map: {model.hf_device_map}"
+            elif device_placement_handled_by_loader: # Fallback if specific attribute not found but placement was handled
+                final_device_info = f"Handled by loader, target benchmark device: {self.device}"
+            else: # If it was moved by .to(self.device)
+                final_device_info = self.device
+
+            self.logger.info(f"Model '{model_name}' loaded. Effective device(s): {final_device_info}.")
             return model, tokenizer
         except Exception as e:
             self.logger.error(f"Failed to load model '{model_name}': {e}. Skipping this model.", exc_info=True)
