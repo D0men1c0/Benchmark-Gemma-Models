@@ -30,6 +30,11 @@ The architecture is designed for clarity, maintainability, and extensibility. Ke
 │   │   ├── concrete_dataset_loader.py # Handles HF Hub, local, streaming, field normalization
 │   │   └── dataset_factory.py         # DatasetFactory
 │   │
+│   ├── 📂 prompting/                 # Prompt engineering and building
+│   │   ├── base_prompt_builder.py      # Abstract prompt builder interface
+│   │   ├── concrete_prompt_builders.py # TemplateBased, MMLU, Translation builders etc.
+│   │   └── prompt_builder_factory.py   # PromptBuilderFactory
+│   │
 │   ├── 📂 tasks/                     # Task-specific prompting and generation logic
 │   │   ├── base_task_handler.py       # Abstract task handler interface
 │   │   ├── concrete_task_handlers.py  # Handlers for various tasks (QA, Math, Summarization)
@@ -83,14 +88,15 @@ venv\Scripts\activate
 ```bash
 python src/scripts/run_benchmark.py \
     --config src/config/benchmark_config.yaml \
-    --output-dir results/
+    --output-dir results/ \
+    --log-to-file --log-file-dir run_logs/
 ```
 
 ---
 
 ## Workflow Deep Dive
 
-![Benchmark Pipeline Diagram](img/mermaid_new_diagram.png)
+![Benchmark Pipeline Diagram](img/mermaid_new_diagram2.png)
 
 The benchmarking process is orchestrated by the `BenchmarkRunner` and initiated from the `run_benchmark.py` script.
 
@@ -102,54 +108,54 @@ The benchmarking process is orchestrated by the `BenchmarkRunner` and initiated 
         * Advanced runtime settings (multi-GPU usage, specific model generation parameters like truncation and padding).
         * Model details (including quantization choices).
         * Dataset sources and configurations.
-        * Task definitions and their types.
+        * Task definitions and their types (e.g., `multiple_choice_qa`, `math_reasoning_generation`, `summarization`, `translation`, `classification`, `text_pair_classification`).
         * Metric choices and their specific options.
         * Reporting preferences.
 
 2.  **Dataset Sourcing and Preparation**
-    * For each task outlined in the configuration, such as **MMLU (Anatomy subset)**, **GSM8K**, and **CNN/DailyMail Summarization**, the `BenchmarkRunner` ensures the respective datasets (`cais/mmlu`, `gsm8k`, `cnn_dailymail`) are available.
+    * For each task outlined in the configuration, such as **MMLU (Anatomy subset)**, **GSM8K**, **CNN/DailyMail Summarization**, **OPUS-100 Translation**, **GLUE SST-2 Sentiment Classification**, and **GLUE MRPC Paraphrase Detection**, the `BenchmarkRunner` ensures the respective datasets are available.
     * It employs a `DatasetFactory` to create instances of `ConcreteDatasetLoader`.
     * The `ConcreteDatasetLoader` is responsible for:
-        * Fetching datasets from Hugging Face Hub, as specified (e.g., `cais/mmlu` with config `anatomy`, `gsm8k` with config `main`, `cnn_dailymail` with config `3.0.0`).
+        * Fetching datasets from Hugging Face Hub, as specified (e.g., `cais/mmlu` with config `anatomy`, `gsm8k` with config `main`, `cnn_dailymail` with config `3.0.0`, `opus100` with config `en-fr`, `glue` with config `sst2` or `mrpc`).
         * Supporting data streaming for large datasets.
-        * Performing automatic field normalization, which intelligently maps diverse column names from original datasets (e.g., `question` and `answer` from GSM8K, or `article` and `highlights` from CNN/DailyMail) to a standardized set of field names (like `input_text`, `target_text`, `label_index`) based on the specified `task_type`. This standardization simplifies downstream processing by task handlers.
+        * Performing automatic field normalization, which intelligently maps diverse column names from original datasets to a standardized set of field names (like `input_text`, `target_text`, `label_index`) based on the specified `task_type`. This standardization simplifies downstream processing.
 
 3.  **Model Loading and Setup**
-    * For every model specified in the configuration (e.g., `gemma-7b`, `llama-2-7b`), the `BenchmarkRunner` utilizes a `ModelLoaderFactory`.
+    * For every model specified in the configuration (e.g., `gemma-7b`), the `BenchmarkRunner` utilizes a `ModelLoaderFactory`.
     * This factory instantiates the appropriate `ConcreteModelLoader`.
     * The `ConcreteModelLoader` then loads the target LLM from sources like Hugging Face, using the specified `checkpoint`.
     * The loading process also handles specified quantization (e.g., 4-bit, 8-bit) and model offloading to optimize resource usage.
 
-4.  **Task Execution per Model and Dataset**
-    * The `BenchmarkRunner` then iterates through each configured model and, for each model, through each defined task like **MMLU (Anatomy subset)**, **GSM8K**, or **CNN/DailyMail Summarization**.
+4.  **Prompt Engineering and Task Execution per Model and Dataset**
+    * The `BenchmarkRunner` then iterates through each configured model and, for each model, through each defined task.
     * For a given model-task pair:
-        * A `TaskHandlerFactory` selects the specialized `ConcreteTaskHandler` based on the task's `type` (e.g., `multiple_choice_qa` for MMLU, `math_reasoning_generation` for GSM8K, `summarization` for CNN/DailyMail).
-        * The `ConcreteTaskHandler` takes batches of data from the normalized dataset.
-        * It prepares task-specific prompts tailored to guide the LLM effectively for that particular task (e.g., formatting MMLU questions with choices, passing GSM8K problems directly, or providing CNN/DailyMail articles for summarization).
+        * The `ConcreteTaskHandler` (selected by `TaskHandlerFactory`) receives batches of data from the normalized dataset.
+        * **Prompt Engineering:** Before passing data to the `TaskHandler` for execution, or as part of the `TaskHandler`'s initial setup for a batch, a `PromptBuilderFactory` selects a `ConcretePromptBuilder` (e.g., `MMLUPromptBuilder`, `TranslationPromptBuilder`, or a `TemplateBasedPromptBuilder`). This builder uses task-specific configurations and templates defined in `benchmark_config.yaml` (under `handler_options.prompt_template` and `handler_options.prompt_builder_type`) to construct the precise input prompts for the LLM. This allows for flexible and customizable prompt strategies for each task.
+        * The `ConcreteTaskHandler` then uses these prepared prompts.
         * It manages generation parameters (like `max_new_tokens`, `num_beams`) retrieved from the "advanced" section of the configuration.
-        * The handler invokes the model's generation capabilities to get raw output.
+        * The handler invokes the model's generation capabilities (for generative tasks) or processes inputs (for classification tasks) to get raw output.
 
 5.  **Output Post-processing**
-    * The raw text generated by the model often needs refinement before it can be evaluated.
+    * The raw output generated/processed by the model often needs refinement.
     * A `PostProcessorFactory` selects a task-specific `ConcretePostProcessor`.
     * This component cleans the model's output and extracts the relevant information. For instance:
-        * The `MMLUPostProcessor` extracts the choice letter (A, B, C, D) from the model's generation.
-        * The `GSM8KPostProcessor` extracts the final numerical answer from the reasoned output.
-        * The `SummarizationPostProcessor` might perform basic cleaning on the generated summary.
-    * This step ensures that both predictions and reference labels are in a comparable format for metric calculation.
+        * The `MMLUPostProcessor` extracts the choice letter (A, B, C, D).
+        * The `GSM8KPostProcessor` extracts the final numerical answer.
+        * Other post-processors ensure outputs are standardized for evaluation.
+    * This step ensures that both predictions and reference labels are in a comparable format.
 
 6.  **Stateful, Batched Evaluation**
-    * The processed predictions and labels for each batch are then passed to an `Evaluator` instance.
+    * The processed predictions and labels for each batch are passed to an `Evaluator` instance.
     * The `Evaluator` manages the lifecycle of **stateful metrics**:
-        * At the beginning of a task evaluation, it uses a `MetricFactory` to instantiate all configured `ConcreteMetric` classes (e.g., `exact_match` for MMLU and GSM8K; `rouge`, `bert_score` for summarization).
-        * Each metric instance has its options set via its `set_options()` method (e.g., `normalize: true` for `exact_match`, or `lang: "en"` for `bert_score`) and its internal state reset via its `reset_state()` method.
-    * As the `BenchmarkRunner` feeds data batch by batch, these are passed to the `evaluator.update_batch_metrics()` method. Each `ConcreteMetric` then updates its internal state based on the current batch's data.
-    * To provide visibility during long runs, **intermediate metric scores** can be logged periodically, based on the `evaluation.log_interval` setting in the configuration.
-    * Once all batches for a task have been processed, the `evaluator.finalize_results()` method is called. At this point, each `ConcreteMetric` computes its final score.
+        * It uses a `MetricFactory` to instantiate `ConcreteMetric` classes (e.g., `exact_match`, `rouge`, `bert_score`, `bleu`, `meteor`, `accuracy`, `f1_score`, `distinct_ngram`, and potentially others like `perplexity`, `toxicity`, `factual_consistency` if configured).
+        * Each metric instance has its options set (e.g., `normalize: true` for `exact_match`, `lang: "en"` for `bert_score`) and its state reset.
+    * As data is processed batch by batch, `evaluator.update_batch_metrics()` is called, and each `ConcreteMetric` updates its internal state.
+    * Intermediate metric scores can be logged periodically.
+    * Once all batches are processed, `evaluator.finalize_results()` computes the final scores.
 
 7.  **Reporting**
     * Finally, the `BenchmarkRunner` collects all aggregated metric results.
-    * These comprehensive results are then passed to a `FileManager`, which saves them in the user-specified formats (e.g., JSON, CSV, PDF) to the designated output directory.
+    * These results are passed to a `FileManager`, saving them in user-specified formats (e.g., JSON, CSV, PDF).
 
 This structured pipeline ensures a reproducible, extensible, and efficient benchmarking process from configuration to final report.
 
@@ -163,13 +169,15 @@ This structured pipeline ensures a reproducible, extensible, and efficient bench
 | `DatasetFactory`          | A factory responsible for creating instances of `ConcreteDatasetLoader`.                                                                    | `benchmark/dataset/`                |
 | `ConcreteDatasetLoader`   | Loads datasets from various sources (Hugging Face Hub, local), supports streaming, and performs crucial input field normalization.          | `benchmark/dataset/`                |
 | `ModelLoaderFactory`      | A factory for creating model loader instances, supporting different frameworks and quantization.                                          | `benchmark/models/`                   |
+| `PromptBuilderFactory`    | A factory for selecting the appropriate `ConcretePromptBuilder` to construct task-specific prompts based on templates and configurations.   | `benchmark/prompting/`              |
+| `ConcretePromptBuilder`   | Implements specific prompt building strategies (e.g., for MMLU, translation, or general template-based) using configured templates.         | `benchmark/prompting/`              |
 | `TaskHandlerFactory`      | A factory that selects the appropriate `ConcreteTaskHandler` based on the `type` specified for a task.                                    | `benchmark/tasks/`                    |
-| `ConcreteTaskHandler`     | Handles the specifics of a given task type, including preparing prompts/inputs from batched data and managing model generation.         | `benchmark/tasks/`                    |
+| `ConcreteTaskHandler`     | Handles the specifics of a given task type, using prepared prompts, managing model interaction (generation/processing), and batching.     | `benchmark/tasks/`                    |
 | `PostProcessorFactory`    | A factory for selecting the appropriate `ConcretePostProcessor` for a task.                                                               | `benchmark/postprocessing/`           |
 | `ConcretePostProcessor`   | Processes raw model outputs and reference labels to prepare them for consistent metric evaluation (e.g., extracting specific answer formats). | `benchmark/postprocessing/`           |
 | `Evaluator`               | Manages the lifecycle of stateful metrics. It initializes metrics, updates them with data from each batch, and finalizes the results.       | `benchmark/evaluation/evaluator.py` |
 | `MetricFactory`           | A factory used by the `Evaluator` to create instances of `ConcreteMetric` classes.                                                        | `benchmark/evaluation/metrics/`     |
-| `ConcreteMetric`          | Implements specific evaluation metrics (e.g., Accuracy, ROUGE, ExactMatch) with a stateful interface (`set_options`, `reset_state`, `update_state`, `result`). | `benchmark/evaluation/metrics/`     |
+| `ConcreteMetric`          | Implements specific evaluation metrics (e.g., Accuracy, ROUGE, ExactMatch, BLEU, BERTScore) with a stateful interface.                    | `benchmark/evaluation/metrics/`     |
 | `FileManager`             | Responsible for saving the final, aggregated benchmark results into various output formats like JSON, CSV, and PDF.                       | `benchmark/reporting/file_manager.py` |
 
 ---
@@ -184,24 +192,29 @@ This benchmark suite is engineered from the ground up to provide a robust, flexi
         * **General Settings:** Experiment naming, output directories, random seeds.
         * **Model Parameters:** Specify LLMs (e.g., Gemma, Llama 2, Mistral), quantization (4-bit, 8-bit), offloading, and fine-tune generation arguments (`max_new_tokens`, `num_beams`, `temperature`, etc.).
         * **Dataset Specifications:** Define sources (Hugging Face Hub, local), splits, and streaming options.
-        * **Task Definitions:** Configure multiple tasks (e.g., MMLU, GSM8K, Summarization) with their specific types.
-        * **Metric Choices:** Select a wide array of metrics and their specific options (e.g., normalization for ExactMatch, language for BERTScore).
+        * **Task Definitions:** Configure multiple tasks (e.g., MMLU, GSM8K, **Summarization**, **Translation**, Sentiment Analysis, Paraphrase Detection) with their specific types, and crucially, **customizable prompt templates and prompt builder types** via `handler_options`.
+        * **Metric Choices:** Select a wide array of metrics and their specific options (e.g., normalization for ExactMatch, language for BERTScore, specific ROUGE types).
         * **Runtime Parameters:** Control `batch_size`, `truncation`, `padding`, and even settings for potential distributed training or specialized hardware (multi-GPU/TPU, though full support for these is a future step).
     * This centralized approach allows for complex experiment design and fine-tuning without altering the core codebase, ensuring reproducibility and ease of iteration.
 
 * **Highly Modular & Scalable "Factory-First" Architecture:**
-    * The entire framework is built upon a modular design leveraging the **factory pattern** for all core components: `ModelLoaderFactory`, `DatasetFactory`, `TaskHandlerFactory`, `PostProcessorFactory`, and `MetricFactory`.
-    * This de-coupled architecture ensures **high extensibility and maintainability**. Adding new models, datasets, task types, post-processing routines, or evaluation metrics typically involves creating a new concrete class and registering it with the respective factory, minimizing impact on existing code.
+    * The entire framework is built upon a modular design leveraging the **factory pattern** for all core components: `ModelLoaderFactory`, `DatasetFactory`, `PromptBuilderFactory`, `TaskHandlerFactory`, `PostProcessorFactory`, and `MetricFactory`.
+    * This de-coupled architecture ensures **high extensibility and maintainability**. Adding new models, datasets, **prompt strategies**, task types, post-processing routines, or evaluation metrics typically involves creating a new concrete class and registering it with the respective factory, minimizing impact on existing code.
     * This design inherently makes the suite **scalable**, ready to adapt as new LLMs and evaluation methodologies emerge.
 
-* **Standardized Benchmarking Across Diverse LLMs:**
-    * A key strength is the ability to benchmark **various LLMs on a consistent set of tasks and evaluation protocols**. By defining tasks (like MMLU, GSM8K, Summarization) and their evaluation criteria once in the configuration, you can systematically compare different models (Gemma, Llama, Mistral, etc.) and their variants (e.g., different sizes, quantization levels) under the same conditions.
+* **Flexible Prompt Engineering:**
+    * Dedicated `prompting` module with `BasePromptBuilder`, `ConcretePromptBuilder` implementations (e.g., `TemplateBasedPromptBuilder`, `MMLUPromptBuilder`, `TranslationPromptBuilder`), and a `PromptBuilderFactory`.
+    * Allows users to define custom **prompt templates** directly in the `benchmark_config.yaml` for each task (via `handler_options.prompt_template`).
+    * Supports selection of different **prompt building strategies** (`handler_options.prompt_builder_type`) for varied and sophisticated model interaction across all tasks, including **Summarization** and **Translation**.
+
+* **Standardized Benchmarking Across Diverse LLMs & Expanded Task Suite:**
+    * A key strength is the ability to benchmark **various LLMs on a consistent and expanded set of tasks and evaluation protocols**. By defining tasks (like MMLU, GSM8K, **Summarization**, **Translation**, Sentiment Analysis, Paraphrase Detection) and their evaluation criteria once in the configuration, you can systematically compare different models (Gemma, Llama, Mistral, etc.) and their variants.
     * This provides a level playing field for fair and insightful performance comparisons.
 
 * **Automated Data Handling Pipeline:**
-    * **Dataset Normalization:** `ConcreteDatasetLoader` automatically normalizes diverse dataset field names (e.g., mapping `article` or `question` to a standard `input_text`) based on `task_type`, simplifying data integration.
-    * **Task-Specific Prompting:** `ConcreteTaskHandler` classes prepare tailored prompts from normalized batch data to guide LLMs effectively for each specific task.
-    * **Output Post-processing:** Dedicated `ConcretePostProcessor` modules (e.g., `MMLUPostProcessor`, `GSM8KPostProcessor`) clean and structure raw model outputs (e.g., extracting choice letters, numerical answers), ensuring predictions are in a comparable format to reference labels for accurate evaluation.
+    * **Dataset Normalization:** `ConcreteDatasetLoader` automatically normalizes diverse dataset field names based on `task_type`, simplifying data integration.
+    * **Task-Specific Prompting (via Prompt Builders):** `ConcretePromptBuilder` classes, selected via `PromptBuilderFactory`, prepare tailored prompts from normalized batch data and user-defined templates to guide LLMs effectively for each specific task, including nuanced instructions for **Summarization** or language pairs for **Translation**.
+    * **Output Post-processing:** Dedicated `ConcretePostProcessor` modules (e.g., `MMLUPostProcessor`, `GSM8KPostProcessor`, `SummarizationPostProcessor`, `TranslationPostProcessor`) clean and structure raw model outputs, ensuring predictions are in a comparable format to reference labels for accurate evaluation.
 
 * **Efficient & Scalable Evaluation with Stateful Metrics:**
     * **Stateful Metric Design:** Core evaluation metrics are implemented with a stateful interface (`set_options`, `reset_state`, `update_state`, `result`), allowing them to accumulate results batch-by-batch.
@@ -211,9 +224,10 @@ This benchmark suite is engineered from the ground up to provide a robust, flexi
 * **Comprehensive and Customizable Metric Suite:**
     * Supports a wide array of built-in metrics:
         * **Accuracy & Classification:** Accuracy, F1-Score, Precision, Recall.
-        * **Text Generation & Similarity:** ROUGE, BERTScore, BLEU, METEOR, Perplexity.
+        * **Text Generation & Similarity:** ROUGE (for **Summarization**), BERTScore (for **Summarization** and **Translation**), BLEU (for **Translation**), METEOR (for **Translation**), Perplexity.
         * **Exact Matching:** ExactMatch with configurable normalization.
         * **Diversity & Content:** Distinct N-grams, Word Entropy.
+        * **Task-Specific:** Metrics are chosen appropriately for each task type, ensuring relevant evaluation for MMLU, GSM8K, **Summarization**, **Translation**, and others.
         * **And more**, all adapted for the stateful, batched flow.
     * Easily extendable with new custom metrics by adhering to the `BaseMetric` interface.
 
@@ -227,13 +241,13 @@ This benchmark suite is engineered from the ground up to provide a robust, flexi
 Choose this suite for a robust, transparent, and developer-friendly LLM evaluation experience:
 
 * **Scalability for Demanding Benchmarks:** Designed from the ground up with stateful metrics and batch processing to handle large datasets and complex models without exhausting memory.
-* **Deep, Granular Insights:** Go beyond simple scores with task-specific input/output processing, a rich suite of diverse metrics, and detailed configuration options.
-* **High Extensibility & Maintainability:** The modular, factory-based architecture makes it straightforward to add new models, datasets, evaluation tasks, or metrics as the LLM landscape evolves.
-* **Reproducible & Configurable Experiments:** Pydantic-validated YAML configurations ensure that benchmarks are well-defined, easy to replicate, and simple to modify.
+* **Deep, Granular Insights:** Go beyond simple scores with task-specific input/output processing (including **customizable prompt engineering via configuration** for nuanced model interaction), a rich suite of diverse metrics, and detailed configuration options that allow for fine-tuned experimentation across tasks like **Summarization**, **Translation**, and more.
+* **High Extensibility & Maintainability:** The modular, factory-based architecture (now including a dedicated **PromptBuilderFactory**) makes it straightforward to add new models, datasets, **prompt strategies**, evaluation tasks, or metrics as the LLM landscape evolves.
+* **Reproducible & Configurable Experiments:** Pydantic-validated YAML configurations, which can now also define **specific prompt templates per task**, ensure that benchmarks are well-defined, easy to replicate, and simple to modify for targeted investigations.
 * **Efficient Resource Management:** Support for model quantization and careful batch handling helps optimize the use of computational resources.
-* **Developer-Friendly:** Clear separation of concerns, Pythonic design, and comprehensive logging (including intermediate metrics) make the framework easy to understand, use, and debug.
-* **Focus on Practicality:** Addresses real-world challenges in LLM benchmarking, such as efficient processing of large data and the need for diverse, task-appropriate evaluation.
-* **Robust Reporting** Produces results in multiple formats (JSON, CSV, PDF) and offers visual summaries for better insights.
+* **Developer-Friendly:** Clear separation of concerns (with distinct modules for **prompting**, task handling, evaluation, etc.), Pythonic design, and comprehensive logging (including intermediate metrics) make the framework easy to understand, use, and debug.
+* **Focus on Practicality:** Addresses real-world challenges in LLM benchmarking, such as efficient processing of large data, the need for diverse, task-appropriate evaluation (across a wider range of tasks including **Summarization** and **Translation**), and flexible model prompting.
+* **Robust Reporting:** Produces results in multiple formats (JSON, CSV, PDF) and offers the potential for visual summaries for better insights.
 
 ---
 
@@ -250,7 +264,7 @@ Our immediate focus is on further solidifying the framework and enhancing its co
     * Integrate additional, widely-used evaluation metrics, particularly those capturing nuanced aspects of LLM performance such as advanced reasoning capabilities, instruction following fidelity, and specific safety or robustness probes.
     * Streamline the process for users to integrate new academic benchmarks and define custom task types within the existing factory-based architecture.
 * **Enhance Generation Task Capabilities:**
-    * Refine prompt engineering strategies within `TaskHandlers` to elicit optimal performance from different models.
+    * Further enhance prompt engineering capabilities by extending the new prompting module (e.g., for dynamic few-shot example selection, complex template logic) to elicit optimal performance from different models.
     * Explore and integrate advanced, configurable generation techniques (e.g., beam search, diverse sampling methods like top-k/top-p, temperature control) as options within the `advanced` configuration section to allow for more controlled and varied model output during benchmarks.
 * **Improve Reporting & Usability:**
     * Enhance the content, clarity, and visual appeal of generated PDF reports, potentially including more auto-generated charts summarizing key findings.
