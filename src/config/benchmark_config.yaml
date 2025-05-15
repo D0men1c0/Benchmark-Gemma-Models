@@ -3,7 +3,7 @@
 # ============================
 general:
   experiment_name: "Gemma_Benchmark_Comprehensive_2025"
-  output_dir: "./benchmarks_output"
+  output_dir: "./benchmarks_output" # All benchmark outputs will be saved here
   random_seed: 42
 
 # ============================
@@ -11,13 +11,13 @@ general:
 # ============================
 tasks:
   # --- Task 1: MMLU (Multiple Choice QA) ---
-  - name: "MMLU (Anatomy Subset - Templated)"
+  - name: "MMLU (all Subset - Templated)"
     type: "multiple_choice_qa"
-    description: "MMLU (Anatomy) via templated letter generation."
+    description: "MMLU (all subjects) via templated letter generation."
     datasets:
       - name: "cais/mmlu"
         source_type: "hf_hub"
-        config: "anatomy"
+        config: "all" # Using all MMLU subjects
         split: "validation"
     handler_options:
       prompt_builder_type: "mmlu" # Uses MMLUPromptBuilder
@@ -33,10 +33,10 @@ tasks:
       - name: exact_match
         options: { normalize: true, ignore_case: true, ignore_punct: true }
 
-  # --- Task 2: GSM8K (Math Reasoning) ---
-  - name: "GSM8K (Templated)"
+  # --- Task 2: GSM8K (Reasoning Text Analysis) ---
+  - name: "GSM8K (Reasoning Text Analysis)"
     type: "math_reasoning_generation"
-    description: "Grade school math problems with templated prompt."
+    description: "Grade school math problems. Evaluates the textual properties of the generated reasoning steps."
     datasets:
       - name: "gsm8k"
         source_type: "hf_hub"
@@ -45,12 +45,16 @@ tasks:
     handler_options:
       prompt_builder_type: "default"
       prompt_template: "Solve the following math problem step-by-step. Your final answer should be a number, formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
-      # postprocessor_key: "gsm8k" # Optional override
+      postprocessor_key: "default" # Uses DefaultPostProcessor to keep the full reasoning string
     evaluation_metrics:
-      - name: exact_match
-        options: { normalize: true, ignore_case: true, ignore_punct: true }
-      - name: distinct_ngram
-        options: { ngrams: [1, 2] }
+      - name: rouge # Compares textual similarity of the reasoning steps
+        options:
+          metrics: ['rouge1', 'rouge2', 'rougeL']
+          stats: ['f']
+      - name: bert_score # Compares semantic similarity of the reasoning steps
+        options: { lang: "en" }
+      - name: distinct_ngram # Calculates lexical diversity in the reasoning text
+        options: { ngrams: [1, 2, 3] }
 
   # --- Task 3: Summarization (CNN/DailyMail) ---
   - name: "CNN/DailyMail Summarization"
@@ -68,9 +72,9 @@ tasks:
       - name: rouge
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
-          stats: ['f', 'p', 'r'] # Added precision and recall
+          stats: ['f', 'p', 'r']
       - name: bert_score
-        options: { lang: "en" } # Ensure lang matches dataset language
+        options: { lang: "en" }
       - name: distinct_ngram
         options: { ngrams: [1, 2, 3] }
 
@@ -86,58 +90,50 @@ tasks:
     handler_options:
       prompt_builder_type: "translation" # Uses TranslationPromptBuilder
       prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}: {input_text}"
-      # postprocessor_key: "translation" # Optional override
     evaluation_metrics:
       - name: bleu
         options: {} # Uses default BLEU settings in your metric
       - name: meteor
         options: {} # Uses default METEOR settings
 
-  # --- Task 5: GLUE SST-2 (Sentiment Classification) ---
-  - name: "GLUE-SST-2 (Sentiment)"
-    type: "classification" # Uses ClassificationTaskHandler
-    description: "GLUE Stanford Sentiment Treebank - Binary Sentiment Classification."
-    datasets:
-      - name: "glue"
-        source_type: "hf_hub"
-        config: "sst2"       # This is passed as 'dataset_config_name'
-        split: "validation"
-    evaluation_metrics:
-      - name: accuracy
-        options: {}
-
-  # --- Task 6: GLUE MRPC (Paraphrase Detection - Text Pair Classification) ---
-  - name: "GLUE-MRPC (Paraphrase)"
-    type: "text_pair_classification" # Requires a TextPairClassificationTaskHandler
-    description: "GLUE Microsoft Research Paraphrase Corpus - Paraphrase Detection."
-    datasets:
-      - name: "glue"
-        source_type: "hf_hub"
-        config: "mrpc"      
-    evaluation_metrics:
-      - name: accuracy
-        options: {}
-      - name: f1_score
-        options: { average: "binary" } # MRPC is binary classification
-
 # ============================
 # Models Configuration
 # ============================
 models:
-  - name: "gemma-7b"
+  - name: "gemma-7b-it" # Using instruction-tuned version
     variant: "gemma"
     size: "7B"
     framework: "huggingface"
-    checkpoint: "google/gemma-7b"
+    checkpoint: "google/gemma-7b-it"
+    quantization: "4bit" # Or "8bit" or null (None in Python)
+    offloading: true
+  - name: "gemma-2b-it"
+    variant: "gemma"
+    size: "2B"
+    framework: "huggingface"
+    checkpoint: "google/gemma-2b-it"
+    quantization: "8bit"
+    offloading: true
+  - name: "Llama-2-7b" # Open Llama 3B model as a ~2.7B Llama option
+    variant: "llama"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "meta-llama/Llama-2-7b"
     quantization: "4bit"
     offloading: true
-  # Add other models here if you want to compare
-  # - name: "gemma-2b"
-  #   variant: "gemma"
-  #   size: "2B"
+  - name: "gpt2" # Added GPT-2 base model
+    variant: "gpt2"
+    size: "124M" # Standard GPT-2 small
+    framework: "huggingface"
+    checkpoint: "gpt2"
+    quantization: null # No quantization for gpt2, it's small
+    offloading: false
+  # - name: "phi-2" # Alternative 2.7B parameter model (not Llama architecture)
+  #   variant: "phi"
+  #   size: "2.7B"
   #   framework: "huggingface"
-  #   checkpoint: "google/gemma-2b"
-  #   quantization: "8bit" # Or "4bit" or None
+  #   checkpoint: "microsoft/phi-2"
+  #   quantization: "4bit" # or null if you have enough VRAM
   #   offloading: true
 
 # ============================
@@ -145,7 +141,7 @@ models:
 # ============================
 model_parameters:
   max_input_length: 512 # Used by some model loaders, but tokenizer truncation in TaskHandler is key
-  max_output_length: 512 # Generic, but actual generation length is by max_new_tokens
+  max_output_length: 512 # Generic, actual generation length is by max_new_tokens in advanced settings
 
 # ============================
 # Evaluation Configuration
@@ -178,9 +174,9 @@ advanced:
   padding: true       # For tokenizer ("longest" or a max_length strategy)
   generate_max_length: 512 # Max length for tokenizer input processing in TaskHandler's _generate_text
   skip_special_tokens: true # For tokenizer.decode
-  max_new_tokens: 50  # Max *new* tokens for model.generate(). This is quite short for GSM8K/Summarization.
-                      # Consider increasing this globally or allowing override in task_cfg.handler_options
-                      # if your TaskHandlers can use such overrides.
+  max_new_tokens: 150  # Max *new* tokens for model.generate(). Increased from 50.
+                      # Consider increasing this further for GSM8K (e.g., 256-512) or Summarization,
+                      # or allow override in task_cfg.handler_options.
   num_beams: 1
   do_sample: false
   use_cache: true     # Setting to true is generally recommended for faster generation, uses more VRAM.
