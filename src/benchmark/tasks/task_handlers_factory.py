@@ -6,6 +6,7 @@ from .concrete_task_handlers import (
     TranslationTaskHandler,
     MultipleChoiceQATaskHandler,
     MathReasoningGenerationTaskHandler,
+    TextPairClassificationTaskHandler
 )
 
 class TaskHandlerFactory:
@@ -17,6 +18,7 @@ class TaskHandlerFactory:
         "translation": TranslationTaskHandler,
         "multiple_choice_qa": MultipleChoiceQATaskHandler,
         "math_reasoning_generation": MathReasoningGenerationTaskHandler,
+        "text_pair_classification": TextPairClassificationTaskHandler
     }
 
     @classmethod

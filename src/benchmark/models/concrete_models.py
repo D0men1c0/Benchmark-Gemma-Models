@@ -1,6 +1,5 @@
 import torch
-from transformers import BitsAndBytesConfig
-from transformers import AutoModelForCausalLM, AutoTokenizer, TFAutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, TFAutoModelForCausalLM, BitsAndBytesConfig
 from typing import Tuple, Any, Optional
 from .base_model_loader import BaseModelLoader
 from utils.logger import setup_logger
@@ -16,34 +15,39 @@ class HuggingFaceModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 
     def load(self, quantization: Optional[str] = None) -> Tuple[Any, Any]:
-        """
-        Load a Hugging Face model and tokenizer with optional quantization.
-
-        :param quantization: Quantization type (e.g., "4bit", "8bit"). Defaults to None.
-        :return: A tuple containing the model and tokenizer.
-        """
         self.logger.info(f"Loading model: {self.model_name} with quantization: {quantization}")
-        if quantization == "4bit":
-            quantization_config = BitsAndBytesConfig(load_in_4bit=True, 
-                                                     bnb_4bit_compute_dtype=torch.float16, 
-                                                     bnb_4bit_quant_type="nf4",
-                                                     bnb_4bit_use_double_quant=True)
-            self.kwargs["quantization_config"] = quantization_config
-        elif quantization == "8bit":
-            quantization_config = BitsAndBytesConfig(load_in_8bit=True,
-                                                     bnb_8bit_compute_dtype=torch.float16,
-                                                     bnb_8bit_quant_type="dynamic",
-                                                     bnb_8bit_use_double_quant=True)
-            self.kwargs["quantization_config"] = quantization_config
+        load_kwargs = self.kwargs.copy()
 
-        self.kwargs.pop("quantization", None)
+        if quantization == "4bit":
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True
+            )
+            load_kwargs["quantization_config"] = quantization_config
+        elif quantization == "8bit":
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_compute_dtype=torch.float16,
+                bnb_8bit_quant_type="dynamic",
+                bnb_8bit_use_double_quant=True
+            )
+            load_kwargs["quantization_config"] = quantization_config
+        elif quantization is None:
+            self.logger.info(f"Loading model {self.model_name} without quantization. Ensuring device_map='auto' if not already set.")
+            if "device_map" not in load_kwargs:
+                load_kwargs["device_map"] = "auto"
+
+        if "quantization" in load_kwargs:
+            load_kwargs.pop("quantization")
         
-        model = AutoModelForCausalLM.from_pretrained(self.model_name, **self.kwargs)
+        model = AutoModelForCausalLM.from_pretrained(self.model_name, **load_kwargs)
         tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         return model, tokenizer
     
@@ -58,7 +62,7 @@ class PyTorchModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 
@@ -88,7 +92,7 @@ class TensorFlowModelLoader(BaseModelLoader):
         :param model_name: Name of the model to load.
         :param kwargs: Additional arguments for the model loader.
         """
-        self.logger = setup_logger()
+        self.logger = setup_logger(self.__class__.__name__)
         self.model_name = model_name
         self.kwargs = kwargs
 

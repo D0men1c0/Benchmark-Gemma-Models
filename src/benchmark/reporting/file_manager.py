@@ -8,7 +8,7 @@ from fpdf import FPDF
 from typing import Dict, Any, Callable, List
 
 from utils.logger import setup_logger
-logger = setup_logger()
+logger = setup_logger(__name__)
 
 # --- Saver Functions ---
 def _save_json(results: Dict[str, Any], file_path: Path):

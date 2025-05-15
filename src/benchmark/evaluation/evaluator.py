@@ -8,7 +8,7 @@ class Evaluator:
     Evaluates benchmark results based on the specified metrics using batched updates.
     """
     def __init__(self, evaluation_params: Dict[str, Any]): # evaluation_params not used in this snippet, but keep for consistency
-        self.logger = setup_logger(__name__)
+        self.logger = setup_logger(self.__class__.__name__)
         self._metrics_instances: Dict[str, BaseMetric] = {}
         self._metrics_configs: List[Dict[str, Any]] = []
 

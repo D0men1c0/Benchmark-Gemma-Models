@@ -4,7 +4,7 @@ from .base_model_loader import BaseModelLoader
 from .concrete_models import HuggingFaceModelLoader, PyTorchModelLoader, TensorFlowModelLoader
 from utils.logger import setup_logger
 
-logger = setup_logger()
+logger = setup_logger(__name__)
 
 class ModelLoaderFactory:
     """

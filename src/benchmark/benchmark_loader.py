@@ -72,9 +72,9 @@ class BenchmarkRunner:
 
     def _load_model_and_tokenizer(self, model_cfg: ModelConfig) -> Optional[Tuple[Any, Any]]:
         """
-        Loads a single model and tokenizer based on config.
+        Loads the model and tokenizer based on the provided configuration.
         :param model_cfg: Configuration for the model to be loaded.
-        :return: Tuple of (model, tokenizer) or None if loading failed.
+        :return: Tuple of (model, tokenizer) if successful, None otherwise.
         """
         model_name = model_cfg.name
         framework = model_cfg.framework
@@ -85,17 +85,36 @@ class BenchmarkRunner:
             model_loader = ModelLoaderFactory.get_model_loader(
                 model_name=model_cfg.checkpoint or model_name,
                 framework=framework,
-                quantization=quantization, # Pass quantization here
+                quantization=quantization, 
                 **model_load_params
             )
-            # Let the loader handle quantization details internally now
             model, tokenizer = model_loader.load(quantization=quantization)
 
-            # Move model to device (unless handled by loader/DataParallel)
-            if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to'):
-                 model.to(self.device)
+            device_placement_handled_by_loader = False
+            if model_cfg.quantization in ["4bit", "8bit"]: # Check original config
+                device_placement_handled_by_loader = True
+                self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
+            elif hasattr(model, 'hf_device_map') and model.hf_device_map is not None:
+                device_placement_handled_by_loader = True
+                self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
 
-            self.logger.info(f"Model '{model_name}' loaded successfully on device '{self.device}'.")
+            if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to') and not device_placement_handled_by_loader:
+                self.logger.info(f"Moving model '{model_name}' to device '{self.device}'.")
+                model.to(self.device)
+            
+            # Determine final device for logging
+            final_device_info = "N/A"
+            if hasattr(model, 'device'):
+                final_device_info = str(model.device)
+            elif hasattr(model, 'hf_device_map') and model.hf_device_map:
+                 # For models with device_map, report the map or a summary
+                final_device_info = f"distributed via hf_device_map: {model.hf_device_map}"
+            elif device_placement_handled_by_loader: # Fallback if specific attribute not found but placement was handled
+                final_device_info = f"Handled by loader, target benchmark device: {self.device}"
+            else: # If it was moved by .to(self.device)
+                final_device_info = self.device
+
+            self.logger.info(f"Model '{model_name}' loaded. Effective device(s): {final_device_info}.")
             return model, tokenizer
         except Exception as e:
             self.logger.error(f"Failed to load model '{model_name}': {e}. Skipping this model.", exc_info=True)
@@ -231,18 +250,41 @@ class BenchmarkRunner:
         task_name = task_cfg.name
         task_type = task_cfg.type
         dataset = dataset_info["dataset"]
-        self.logger.info(f"Running task '{task_name}'...")
+        model_identifier = model.name_or_path if hasattr(model, 'name_or_path') else 'Unknown Model'
+        self.logger.info(f"Running task '{task_name}' for model '{model_identifier}'...")
 
         # 1. Get Task Handler
-        adv_conf_dict = self.config.advanced.dict(exclude_none=True) if self.config.advanced else {}
+        current_advanced_args = self.config.advanced.model_dump(exclude_none=True) if self.config.advanced else {} # Pydantic V2+
+        # Or: current_advanced_args = self.config.advanced.dict(exclude_none=True) if self.config.advanced else {} # Pydantic V1
+        
+        # --- Pass task-specific and dataset-specific info to handler ---
+        # Add task-specific handler_options from TaskConfig
+        if task_cfg.handler_options:
+            current_advanced_args.update(task_cfg.handler_options)
+            self.logger.debug(f"Added handler_options to advanced_args for task '{task_name}': {task_cfg.handler_options}")
+
+        if task_cfg.datasets:
+            first_dataset_cfg = task_cfg.datasets[0]
+            if first_dataset_cfg.config:
+                current_advanced_args["dataset_config_name"] = first_dataset_cfg.config
+            current_advanced_args["dataset_name"] = first_dataset_cfg.name # e.g., "opus100", "glue"
+
         try:
-            handler = TaskHandlerFactory.get_handler(task_type, model, tokenizer, self.device, adv_conf_dict)
+            handler = TaskHandlerFactory.get_handler(
+                task_type, 
+                model, 
+                tokenizer, 
+                self.device, 
+                current_advanced_args # Pass the combined/enriched args
+            )
+            self.logger.debug(f"TaskHandler obtained for '{task_name}' with advanced_args: {current_advanced_args.keys()}")
         except ValueError as e:
-             self.logger.error(f"Could not get handler for task '{task_name}' (type: {task_type}): {e}")
-             return {"error": f"Handler not found: {e}"}
+            self.logger.error(f"Could not get handler for task '{task_name}' (type: {task_type}): {e}")
+            return {"error": f"Handler not found: {e}"}
 
         # 2. Setup DataLoader
-        batch_size = self.config.advanced.batch_size if self.config.advanced else 32
+        batch_size = current_advanced_args.get('batch_size', 32)
+
         try:
             is_map_style = isinstance(dataset, Dataset) and not isinstance(dataset, IterableDataset)
             data_loader = DataLoader(
@@ -253,56 +295,60 @@ class BenchmarkRunner:
             return {"error": f"DataLoader creation failed: {e}"}
 
         # 3. Initialize Evaluator and Prepare Metrics
-        eval_params = self.config.evaluation if self.config.evaluation is not None else {}
-        evaluator = Evaluator(evaluation_params=eval_params)
-        formatted_metrics_config = [m.dict(exclude_none=True) for m in task_cfg.evaluation_metrics]
+        eval_params_dict = {}
+        if self.config.evaluation: # self.config.evaluation is an EvaluationConfig instance
+            eval_params_dict = self.config.evaluation.model_dump(exclude_none=True) # Pydantic V2+
+        evaluator = Evaluator(evaluation_params=eval_params_dict)
+        
+        formatted_metrics_config = [m.model_dump(exclude_none=True) for m in task_cfg.evaluation_metrics] # Pydantic V2+
+        # Or: formatted_metrics_config = [m.dict(exclude_none=True) for m in task_cfg.evaluation_metrics] # Pydantic V1
         evaluator.prepare_metrics(formatted_metrics_config)
         self.logger.debug(f"Evaluator prepared for task '{task_name}'.")
 
         # 4. Process Batches with Progress Bar
         total_batches = None
-        if is_map_style and hasattr(dataset, '__len__'):
+        if dataset and is_map_style and hasattr(dataset, '__len__'):
             try:
                 dataset_len = len(dataset)
                 total_batches = (dataset_len + batch_size - 1) // batch_size
             except TypeError:
                 self.logger.warning(f"Could not determine length for map-style dataset '{task_name}'. Progress bar may be inaccurate.")
 
-        progress_desc = f"Task '{task_name}'"
+        progress_desc = f"Task '{task_name}' ({model_identifier})"
         evaluation_successful = True
         with tqdm(data_loader, total=total_batches, desc=progress_desc, unit="batch", leave=False) as pbar:
             evaluation_successful = self._process_task_batches(handler, pbar, task_name, evaluator)
 
         if not evaluation_successful:
-            self.logger.warning(f"Task '{task_name}' processing was not fully successful due to batch errors.")
+            self.logger.warning(f"Task '{task_name}' on model '{model_identifier}' processing was not fully successful due to batch errors.")
 
         # 5. Finalize and Get Results from Evaluator
         try:
             evaluation_results = evaluator.finalize_results()
             if evaluation_results:
-                # Format the results for logging
                 log_msg_parts = []
                 for metric_name, value in evaluation_results.items():
                     if isinstance(value, float):
                         log_msg_parts.append(f"{metric_name}: {value:.4f}")
-                    elif isinstance(value, dict): # For metrics like ROUGE that return a dict
-                        dict_parts = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k,v in value.items()])
+                    elif isinstance(value, dict): 
+                        dict_parts = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in value.items()])
                         log_msg_parts.append(f"{metric_name}: {{{dict_parts}}}")
                     else:
                         log_msg_parts.append(f"{metric_name}: {value}")
                 
                 self.logger.info(
-                    f"Final Evaluation Results for Task '{task_name}' on model '{model.name_or_path if hasattr(model, 'name_or_path') else 'Unknown Model'}': "
+                    f"Final Evaluation Results for Task '{task_name}' on model '{model_identifier}': "
                     f"{{{', '.join(log_msg_parts)}}}"
                 )
-                
-            self.logger.info(f"Task '{task_name}' evaluation completed. Metrics: {list(evaluation_results.keys())}")
-            if not evaluation_results and evaluation_successful: # check if finalize_results is empty even if processing was ok
-                self.logger.warning(f"Task '{task_name}' produced no evaluation results, though batch processing reported success.")
+            
+            self.logger.info(f"Task '{task_name}' on model '{model_identifier}' evaluation completed. Metrics requested: {[m.name for m in task_cfg.evaluation_metrics]}")
+            
+            if not evaluation_results and evaluation_successful:
+                self.logger.warning(f"Task '{task_name}' on model '{model_identifier}' produced no evaluation results, though batch processing reported success.")
                 return {"status": "No evaluation results generated"}
             return evaluation_results
         except Exception as e:
-            self.logger.error(f"Failed to finalize evaluation for task '{task_name}': {e}", exc_info=True)
+            self.logger.error(f"Failed to finalize evaluation for task '{task_name}' on model '{model_identifier}': {e}", exc_info=True)
             return {"error": f"Evaluation finalization failed: {e}"}
         
 
