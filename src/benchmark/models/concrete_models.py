@@ -23,10 +23,28 @@ class HuggingFaceModelLoader(BaseModelLoader):
         self.logger.info(f"Loading model: {self.model_name} with quantization: {quantization}")
         load_kwargs = self.kwargs.copy()
 
+        torch_dtype_str = load_kwargs.pop("torch_dtype", None)
+        actual_torch_dtype = torch.float32  # Default fallback
+
+        if torch_dtype_str == "bfloat16":
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+                actual_torch_dtype = torch.bfloat16
+            else:
+                self.logger.warning("Configured torch_dtype 'bfloat16' not supported by CUDA, falling back to float32.")
+        elif torch_dtype_str == "float16":
+            actual_torch_dtype = torch.float16
+        elif torch_dtype_str == "float32":
+            actual_torch_dtype = torch.float32
+        elif torch_dtype_str:
+            self.logger.warning(f"Unsupported torch_dtype '{torch_dtype_str}' specified. Defaulting to float32.")
+        elif torch_dtype_str is None:
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+                actual_torch_dtype = torch.bfloat16
+
         if quantization == "4bit":
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_compute_dtype=actual_torch_dtype,
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True
             )
@@ -34,7 +52,7 @@ class HuggingFaceModelLoader(BaseModelLoader):
         elif quantization == "8bit":
             quantization_config = BitsAndBytesConfig(
                 load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.float16,
+                bnb_8bit_compute_dtype=actual_torch_dtype,
                 bnb_8bit_quant_type="dynamic",
                 bnb_8bit_use_double_quant=True
             )

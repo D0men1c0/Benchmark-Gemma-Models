@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 class GeneralConfig(BaseModel):
@@ -75,6 +75,7 @@ class ModelConfig(BaseModel):
     size: Optional[str] = None
     quantization: Optional[str] = None
     offloading: Optional[bool] = None
+    torch_dtype: Optional[Literal["float16", "float32", "bfloat16"]] = None
 
 class ModelParamsConfig(BaseModel):
     # Configuration for model parameters
