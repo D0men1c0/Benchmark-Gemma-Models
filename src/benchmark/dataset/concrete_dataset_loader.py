@@ -52,7 +52,7 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
                  config: Optional[str] = None, split: str = "train",
                  data_dir: Optional[str] = None, streaming: bool = False,
                  dataset_specific_fields: Optional[Dict[str, str]] = None,
-                 **loader_kwargs):
+                 max_samples: Optional[int] = None, **loader_kwargs):
         """
         Initializes the dataset loader with the specified parameters.
         :param name: Dataset name or type (e.g., "glue", "csv")
@@ -62,6 +62,7 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         :param data_dir: Local directory or file path
         :param streaming: Enable streaming mode
         :param dataset_specific_fields: Explicit mapping for input/target fields
+        :param max_samples: Maximum number of samples to load
         :param loader_kwargs: Additional kwargs for dataset loader
         """
         if not isinstance(name, str) or not name.strip():
@@ -75,6 +76,7 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         self.streaming = streaming
         self.dataset_specific_fields = dataset_specific_fields or {}
         self.loader_kwargs = loader_kwargs
+        self.max_samples = max_samples
 
     @classmethod
     def register_source(cls, source_type: str, loader_fn: Callable):
@@ -93,9 +95,29 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
             if not dataset:
                 raise RuntimeError(f"Dataset loading failed: {self.name} (config: {self.config})")
 
+            # Apply cutoff if max_samples is specified
+            if self.max_samples is not None and self.max_samples > 0:
+                original_length_info = "unknown (iterable)"
+                if hasattr(dataset, "__len__"):
+                    original_length_info = str(len(dataset))
+
+                if isinstance(dataset, IterableDataset):
+                    logger.info(f"Applying cutoff: taking first {self.max_samples} samples from iterable dataset '{self.name}'. Original size: {original_length_info}.")
+                    dataset = dataset.take(self.max_samples)
+                elif hasattr(dataset, "select") and callable(dataset.select): # Map-style dataset
+                    current_len = len(dataset)
+                    if current_len > self.max_samples:
+                        logger.info(f"Applying cutoff: selecting first {self.max_samples} samples from dataset '{self.name}'. Original size: {current_len}.")
+                        dataset = dataset.select(range(self.max_samples))
+                    else:
+                        logger.info(f"Cutoff ({self.max_samples}) for dataset '{self.name}' is >= actual size ({current_len}). Using full dataset split.")
+                else:
+                    logger.warning(f"Dataset cutoff requested for '{self.name}', but dataset type does not support .select() or .take(). Cutoff not applied.")
+            
+            # Normalize after cutoff
             return self._normalize_dataset(dataset, task_type) if task_type else dataset
         except Exception as e:
-            logger.error(f"Dataset loading/normalization failed: {e}", exc_info=True)
+            logger.error(f"Dataset loading/normalization/cutoff failed for '{self.name}': {e}", exc_info=True)
             raise
 
     def _load_dataset_by_source(self) -> Iterable:

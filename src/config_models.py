@@ -47,6 +47,7 @@ class DatasetConfig(BaseModel):
     streaming: bool = True
     dataset_specific_fields: Optional[Dict[str, str]] = None
     loader_args: Dict[str, Any] = Field(default_factory=dict)
+    max_samples: Optional[int] = None
 
 class MetricConfig(BaseModel):
     # Configuration for evaluation metrics

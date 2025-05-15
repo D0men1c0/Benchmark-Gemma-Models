@@ -14,5 +14,7 @@ class DatasetFactory:
             split=config.get("split", "validation"),
             data_dir=config.get("data_dir"),
             streaming=config.get("streaming", True),
+            dataset_specific_fields=config.get("dataset_specific_fields"),
+            max_samples=config.get("max_samples"),
             **config.get("loader_args", {})
         )
