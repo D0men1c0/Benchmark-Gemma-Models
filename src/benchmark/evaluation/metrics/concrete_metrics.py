@@ -1,8 +1,10 @@
 from abc import abstractmethod
-from typing import Any, List, Union, Dict
+from typing import Any, List, Union, Dict, Optional # Added Optional
 from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score
 import numpy as np
-from nltk.translate.bleu_score import sentence_bleu, corpus_bleu, SmoothingFunction
+import nltk
+from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
+from nltk.translate.meteor_score import meteor_score as nltk_meteor_score
 from rouge import Rouge
 import bert_score
 from collections import Counter
@@ -10,7 +12,6 @@ import math
 from scipy.stats import pearsonr, spearmanr
 from seqeval.metrics import classification_report as seqeval_classification_report
 from transformers import pipeline
-TRANSFORMERS_AVAILABLE = True
 from .base_metrics import BaseMetric
 from utils.logger import setup_logger
 
@@ -18,55 +19,57 @@ logger = setup_logger(__name__)
 
 
 class AccuracyMetric(BaseMetric):
-    """Class for computing accuracy."""
+    """ Computes accuracy as the ratio of correct predictions to total predictions."""
+
     def __init__(self):
+        """Initializes the AccuracyMetric instance."""
         super().__init__()
-        self.correct_predictions = 0
-        self.total_predictions = 0
+        self.correct_predictions: int = 0
+        self.total_predictions: int = 0
 
     def reset_state(self) -> None:
-        """Reset the internal state of the metric."""
+        """ Resets the internal state of the metric."""
         self.correct_predictions = 0
         self.total_predictions = 0
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
         """
-        Update the metric with a batch of predictions and labels.
+        Updates the metric's state with a batch of predictions and labels.
         :param predictions: List of model predictions for the current batch.
         :param labels: List of ground truth labels for the current batch.
         """
-        # top_k = self._options.get("top_k", None) # Example if options were needed
-        # if top_k:
-        #     logger.warning("Top-k accuracy not implemented in this stateful version yet.")
-        #     # Implement top-k logic here if needed
-        
         for pred, label in zip(predictions, labels):
-            if pred == label: # Simple equality check, assuming processed inputs
+            if pred == label:
                 self.correct_predictions += 1
             self.total_predictions += 1
 
     def result(self) -> float:
-        """Compute the final accuracy."""
+        """
+        Computes and returns the final accuracy value.
+        :return: Computed accuracy value.
+        """
         if self.total_predictions == 0:
             return 0.0
         return self.correct_predictions / self.total_predictions
 
 
-class SklearnScoreMetric(BaseMetric): # Base for Precision, Recall, F1
-    """Base class for sklearn metrics that collect all preds/labels."""
+class SklearnScoreMetric(BaseMetric):
+    """Base class for metrics that use sklearn scoring functions."""
+
     def __init__(self):
+        """Initializes the SklearnScoreMetric instance."""
         super().__init__()
         self._collected_predictions: List[Any] = []
         self._collected_labels: List[Any] = []
 
     def reset_state(self) -> None:
-        """Reset the internal state of the metric."""
+        """Resets the internal state of the metric."""
         self._collected_predictions = []
         self._collected_labels = []
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
         """
-        Update the metric with a batch of predictions and labels.
+        Updates the metric's state with a batch of predictions and labels.
         :param predictions: List of model predictions for the current batch.
         :param labels: List of ground truth labels for the current batch.
         """
@@ -75,65 +78,68 @@ class SklearnScoreMetric(BaseMetric): # Base for Precision, Recall, F1
 
     def _compute_score(self, score_func, **kwargs) -> float:
         """
-        Compute the score using the provided sklearn function.
-        :param score_func: The sklearn scoring function to use (e.g., precision_score).
+        Computes the score using the provided sklearn scoring function.
+        :param score_func: The sklearn scoring function to use.
         :param kwargs: Additional keyword arguments for the scoring function.
         :return: Computed score.
         """
         if not self._collected_predictions or not self._collected_labels:
             logger.warning(f"{self.__class__.__name__}: No data collected to compute score.")
             return 0.0
-        # Ensure labels are not empty and lengths match if sklearn func is sensitive
         if len(self._collected_predictions) != len(self._collected_labels):
-             logger.error(f"{self.__class__.__name__}: Preds and labels length mismatch. Cannot compute score.")
-             return 0.0 # Or raise error
+            logger.error(f"{self.__class__.__name__}: Predictions and labels length mismatch. Cannot compute score.")
+            return 0.0
 
-        # Pass relevant options from self._options
-        average = self._options.get("average", "weighted")
-        zero_division = self._options.get("zero_division", 0) # sklearn's default is "warn", use 0 or 1
-        
-        # Add other relevant sklearn options from self._options if needed
-        sklearn_options = {"average": average, "zero_division": zero_division}
-        # Filter out options not applicable to the specific score_func if necessary
+        sklearn_options = {
+            "average": self._options.get("average", "weighted"), # Default 'weighted' for multi-class
+            "zero_division": self._options.get("zero_division", 0) # Default 0 to avoid warnings/errors
+        }
         
         try:
             return score_func(self._collected_labels, self._collected_predictions, **sklearn_options)
+        except ValueError as ve:
+            logger.error(f"ValueError computing {self.__class__.__name__} with sklearn: {ve}. Options: {sklearn_options}")
+            return 0.0
         except Exception as e:
             logger.error(f"Error computing {self.__class__.__name__} with sklearn: {e}")
             return 0.0
 
 
 class PrecisionMetric(SklearnScoreMetric):
-    """Class for computing precision."""
+    """ Computes precision score using sklearn's precision_score function. """
     def result(self) -> float:
+        """ Computes and returns the precision score. """
         return self._compute_score(precision_score)
 
 class RecallMetric(SklearnScoreMetric):
-    """Class for computing recall."""
+    """ Computes recall score using sklearn's recall_score function. """
     def result(self) -> float:
+        """ Computes and returns the recall score. """
         return self._compute_score(recall_score)
 
 class F1ScoreMetric(SklearnScoreMetric):
-    """Class for computing F1 score."""
+    """ Computes F1 score using sklearn's f1_score function. """
     def result(self) -> float:
+        """ Computes and returns the F1 score. """
         return self._compute_score(f1_score)
 
 
 class ExactMatchMetric(BaseMetric):
-    """Class for computing exact match with normalization options."""
+    """ Computes the exact match ratio between predictions and labels. """
     def __init__(self):
+        """Initializes the ExactMatchMetric instance."""
         super().__init__()
-        self.match_count = 0
-        self.total_count = 0
+        self.match_count: int = 0
+        self.total_count: int = 0
 
     def reset_state(self) -> None:
-        """Reset the internal state of the metric."""
+        """Resets the internal state of the metric."""
         self.match_count = 0
         self.total_count = 0
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
         """
-        Update the metric with a batch of predictions and labels
+        Updates the metric's state with a batch of predictions and labels.
         :param predictions: List of model predictions for the current batch.
         :param labels: List of ground truth labels for the current batch.
         """
@@ -145,74 +151,96 @@ class ExactMatchMetric(BaseMetric):
             pred_str = str(pred_item)
             label_str = str(label_item)
 
-            if normalize: # Apply normalization from options
+            if normalize:
                 if ignore_case:
                     pred_str = pred_str.lower()
                     label_str = label_str.lower()
                 if ignore_punct:
-                    # This could be slow for very long strings. Consider re.sub if performance is an issue.
-                    pred_str = ''.join(c for c in pred_str if c.isalnum() or c.isspace()) # Example: keep alphanumeric and space
-                    label_str = ''.join(c for c in label_str if c.isalnum() or c.isspace()) # Be careful with this
-                    # Original: pred_str = ''.join(c for c in pred_str if c not in '.,;!?\'"')
+                    # Basic punctuation removal. For more robust removal, consider regex or a dedicated library.
+                    punct_to_remove = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+                    pred_str = ''.join(c for c in pred_str if c not in punct_to_remove).strip()
+                    label_str = ''.join(c for c in label_str if c not in punct_to_remove).strip()
+                    # Also consider normalizing whitespace if ignore_punct is true
+                    pred_str = ' '.join(pred_str.split())
+                    label_str = ' '.join(label_str.split())
+
 
             if pred_str == label_str:
                 self.match_count += 1
             self.total_count += 1
 
     def result(self) -> float:
-        """Compute the final exact match score."""
+        """ Computes and returns the exact match ratio. """
         if self.total_count == 0:
             return 0.0
         return self.match_count / self.total_count
 
 
 class BLEUScoreMetric(BaseMetric):
-    """Class for computing BLEU score."""
+    """ Computes BLEU score using NLTK's corpus_bleu function. """
+
     def __init__(self):
+        """Initializes the BLEUScoreMetric instance."""
         super().__init__()
         self._collected_predictions_tokens: List[List[str]] = []
-        self._collected_labels_tokens: List[List[List[str]]] = [] # List of (list of reference tokens)
+        self._collected_labels_tokens: List[List[List[str]]] = []
 
     def reset_state(self) -> None:
-        """Reset the internal state of the metric."""
+        """Resets the internal state of the metric."""
         self._collected_predictions_tokens = []
         self._collected_labels_tokens = []
 
     def update_state(self, predictions: List[str], labels: List[Union[str, List[str]]]) -> None:
         """
-        Update the metric with a batch of predictions and labels.
+        Updates the metric's state with a batch of predictions and labels.
         :param predictions: List of model predictions for the current batch.
         :param labels: List of ground truth labels for the current batch.
         """
-        # Predictions are expected as list of strings (sentences)
-        # Labels can be list of strings (single ref per pred) or list of list of strings (multiple refs per pred)
         for pred_text, label_item in zip(predictions, labels):
-            self._collected_predictions_tokens.append(pred_text.split()) # Tokenize by space
+            # Ensure pred_text is a string before splitting
+            if not isinstance(pred_text, str):
+                logger.warning(f"BLEU: Prediction is not a string ({type(pred_text)}), skipping item.")
+                continue
+            self._collected_predictions_tokens.append(pred_text.split())
+
             if isinstance(label_item, str):
                 self._collected_labels_tokens.append([label_item.split()])
-            elif isinstance(label_item, list): # Assuming list of reference strings
+            elif isinstance(label_item, list) and all(isinstance(ref, str) for ref in label_item):
                 self._collected_labels_tokens.append([ref_text.split() for ref_text in label_item])
             else:
-                logger.warning("Unsupported label format for BLEU, skipping item.")
-
+                logger.warning(f"BLEU: Unsupported label format ({type(label_item)}), skipping item.")
 
     def result(self) -> float:
+        """ Computes and returns the BLEU score. """
         if not self._collected_predictions_tokens or not self._collected_labels_tokens:
             return 0.0
 
         weights = self._options.get("weights", (0.25, 0.25, 0.25, 0.25)) # Default BLEU-4
-        smoothing_option = self._options.get("smoothing", True) # bool or SmoothingFunction
-        
-        smoothing_function = None
-        if isinstance(smoothing_option, bool) and smoothing_option:
-            smoothing_function = SmoothingFunction().method1 # Default NLTK smoothing
-        elif callable(smoothing_option):
-            smoothing_function = smoothing_option
-        
+        smoothing_option_config = self._options.get("smoothing", "method1") # Default to method1
+
+        smoothing_function_map = {
+            "method0": SmoothingFunction().method0, # No smoothing
+            "method1": SmoothingFunction().method1,
+            "method2": SmoothingFunction().method2,
+            "method3": SmoothingFunction().method3,
+            "method4": SmoothingFunction().method4,
+            "method5": SmoothingFunction().method5,
+            "method6": SmoothingFunction().method6,
+            "method7": SmoothingFunction().method7,
+        }
+        smoothing_function = smoothing_function_map.get(smoothing_option_config)
+        if smoothing_option_config is True: # Backward compatibility if True was passed
+            smoothing_function = SmoothingFunction().method1
+        elif smoothing_option_config is False or smoothing_option_config is None:
+             smoothing_function = SmoothingFunction().method0 # No smoothing
+
+        if smoothing_function is None and isinstance(smoothing_option_config, str):
+            logger.warning(f"Invalid NLTK BLEU smoothing method '{smoothing_option_config}'. Defaulting to method1.")
+            smoothing_function = SmoothingFunction().method1
+
         try:
-            # corpus_bleu expects list of list of references, and list of hypotheses
             return corpus_bleu(
-                self._collected_labels_tokens, 
+                self._collected_labels_tokens,
                 self._collected_predictions_tokens,
                 weights=weights,
                 smoothing_function=smoothing_function
@@ -223,134 +251,273 @@ class BLEUScoreMetric(BaseMetric):
 
 
 class ROUGEScoreMetric(BaseMetric):
-    """Class for computing ROUGE score."""
+    """ Computes ROUGE score using the `rouge` library. """
+
     def __init__(self):
+        """Initializes the ROUGEScoreMetric instance."""
         super().__init__()
         self._collected_predictions: List[str] = []
-        self._collected_labels: List[str] = [] # Assuming single reference string per prediction for simplicity here
-                                              # If multiple references, labels might be List[List[str]]
-                                              # and rouge library needs to handle it or adapt.
+        self._collected_labels: List[str] = []
         self._rouge_calculator = Rouge()
 
-
     def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
         self._collected_predictions = []
         self._collected_labels = []
 
     def update_state(self, predictions: List[str], labels: List[str]) -> None:
-        self._collected_predictions.extend(predictions)
-        self._collected_labels.extend(labels)
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
+        # Ensure inputs are lists of strings
+        self._collected_predictions.extend([str(p) for p in predictions])
+        self._collected_labels.extend([str(l) for l in labels])
+
+    def _get_rouge_lib_key(self, r_metric_config_key: str) -> str:
+        """Maps configuration key to `rouge` library key."""
+        key_standardized = r_metric_config_key.lower().replace(" ", "") # Standardizza input
+        
+        if key_standardized == "rougel": return "rouge-l"
+        if key_standardized == "rougelsum": return "rouge-lsum"
+        
+        # Check if already in library format e.g. "rouge-1", "rouge-l"
+        if key_standardized.startswith("rouge-") and len(key_standardized.split('-')[-1]) > 0:
+            return key_standardized
+            
+        # For formats like 'rouge1', 'rouge2' from config
+        if key_standardized.startswith("rouge") and len(key_standardized) > 5 and key_standardized[5:].isalnum():
+            return f"rouge-{key_standardized[5:]}"
+
+        logger.warning(f"Unrecognized ROUGE metric config key '{r_metric_config_key}'. Using it as is, may not match library keys.")
+        return r_metric_config_key
 
     def result(self) -> Dict[str, float]:
+        """ Computes and returns the ROUGE score. """
         if not self._collected_predictions or not self._collected_labels:
-            return {"rouge-l-f": 0.0} # Default structure
+            # Return a default structure based on common expectations or configured metrics
+            default_metrics = self._options.get("metrics", ['rouge-l'])
+            default_stats = self._options.get("stats", ['f'])
+            default_result = {}
+            for m in default_metrics:
+                for s in default_stats:
+                    default_result[f"{m}_{s}"] = 0.0
+            return default_result if default_result else {"rouge-l_f": 0.0}
 
-        # Options for Rouge, e.g., specific metrics like ['rouge-1', 'rouge-2', 'rouge-l']
-        # and stats like ['f', 'p', 'r']
-        # These should be passed via set_options and accessed via self._options
-        # Example default from original code:
-        metrics_to_compute = self._options.get("metrics", ['rouge-l']) # e.g. ['rouge1', 'rouge2', 'rougeL']
-        stats_to_return = self._options.get("stats", ['f'])       # e.g. ['f', 'p', 'r']
+
+        # Filter out empty strings which can cause issues with some ROUGE implementations
+        # or lead to ZeroDivisionError if all are empty.
+        valid_predictions = [p for p in self._collected_predictions if p.strip()]
+        valid_labels = [l for l in self._collected_labels if l.strip()]
+
+        if not valid_predictions or not valid_labels:
+            logger.warning("ROUGE: All predictions or labels are empty after stripping. Returning 0.0 for scores.")
+            return {k: 0.0 for k in self._options.get("metrics", ['rouge-l'])} # Return 0 for configured metrics
+
+        metrics_to_compute = self._options.get("metrics", ['rouge-l']) # e.g., ['rouge1', 'rouge2', 'rougeL']
+        stats_to_return = self._options.get("stats", ['f'])       # e.g., ['f', 'p', 'r']
         
         try:
-            scores = self._rouge_calculator.get_scores(self._collected_predictions, self._collected_labels, avg=True)
+            scores_list = self._rouge_calculator.get_scores(valid_predictions, valid_labels, avg=False)
             
+            aggregated_scores: Dict[str, Dict[str, float]] = {}
+            num_samples = len(scores_list)
+
+            if num_samples == 0: # Should be caught by valid_predictions/labels check, but good to have
+                 return {"rouge_error_no_samples": 1.0}
+
+            for score_item in scores_list: # score_item is for one pred/ref pair
+                for rouge_type_key, stat_values in score_item.items(): # e.g., rouge_type_key='rouge-1', stat_values={'f': ..., 'p': ..., 'r': ...}
+                    if rouge_type_key not in aggregated_scores:
+                        aggregated_scores[rouge_type_key] = {stat: 0.0 for stat in stat_values}
+                    for stat_key, value in stat_values.items():
+                        aggregated_scores[rouge_type_key][stat_key] += value
+            
+            # Average the aggregated scores
+            averaged_scores_final: Dict[str, Dict[str, float]] = {}
+            for rouge_type_key, total_stats in aggregated_scores.items():
+                averaged_scores_final[rouge_type_key] = {
+                    stat_key: value / num_samples for stat_key, value in total_stats.items()
+                }
+
             final_results = {}
-            for r_metric in metrics_to_compute: # e.g. 'rouge1', 'rouge2', 'rougeL'
-                lib_metric_key = r_metric.replace('rougeLsum', 'rouge-lsum').replace('rouge', 'rouge-') # Basic mapping
-                if lib_metric_key.endswith('-') and len(lib_metric_key) > 6: # e.g. rouge-1, rouge-2, rouge-L
-                     if lib_metric_key[-2].isalpha() and lib_metric_key[-2].islower(): # rouge-l -> rouge-L
-                         lib_metric_key = lib_metric_key[:-2] + lib_metric_key[-2].upper() + lib_metric_key[-1:]
-
-
-                if lib_metric_key in scores:
-                    for stat in stats_to_return:
-                        if stat in scores[lib_metric_key]:
-                            final_results[f"{r_metric}_{stat}"] = scores[lib_metric_key][stat] # Original code used f"{metric}-{stat}"
+            for r_metric_config in metrics_to_compute: # e.g., 'rouge1', 'rougeL' from config
+                lib_metric_key = self._get_rouge_lib_key(r_metric_config) # e.g., 'rouge-1', 'rouge-l'
+                
+                if lib_metric_key in averaged_scores_final:
+                    for stat_config in stats_to_return: # e.g., 'f', 'p', 'r' from config
+                        if stat_config in averaged_scores_final[lib_metric_key]:
+                            final_results[f"{r_metric_config}_{stat_config}"] = averaged_scores_final[lib_metric_key][stat_config]
                         else:
-                            logger.warning(f"Stat '{stat}' not found for ROUGE metric '{lib_metric_key}'.")
+                            logger.warning(f"ROUGE: Stat '{stat_config}' not found for metric '{lib_metric_key}'. Available: {averaged_scores_final[lib_metric_key].keys()}")
+                            final_results[f"{r_metric_config}_{stat_config}"] = 0.0 # Default if stat not found
+
+                # Handle rougeLsum as potentially equivalent to rouge-l if library doesn't distinguish
+                elif r_metric_config.lower() == 'rougelsum' and 'rouge-l' in averaged_scores_final:
+                    self.logger.debug("ROUGE: Treating 'rougeLsum' as 'rouge-l'.")
+                    for stat_config in stats_to_return:
+                        if stat_config in averaged_scores_final['rouge-l']:
+                             final_results[f"rougeLsum_{stat_config}"] = averaged_scores_final['rouge-l'][stat_config]
                 else:
-                    # Handle cases like 'rougeLsum' if the library provides it differently or it needs special calculation
-                    if r_metric == 'rougeLsum' and 'rouge-l' in scores: # Often rougeLsum is just rougeL for abstractive
-                        for stat in stats_to_return:
-                             if stat in scores['rouge-l']:
-                                final_results[f"rougeLsum_{stat}"] = scores['rouge-l'][stat]
-                             else:
-                                logger.warning(f"Stat '{stat}' not found for ROUGE metric 'rouge-l' (used for rougeLsum).")
-                    else:
-                        logger.warning(f"ROUGE metric '{r_metric}' (mapped to '{lib_metric_key}') not found in scores: {scores.keys()}")
-            return final_results if final_results else {"rouge_error": 1.0}
+                    logger.warning(f"ROUGE: Metric key '{lib_metric_key}' (from config '{r_metric_config}') not found in calculated scores. Available ROUGE types: {averaged_scores_final.keys()}")
+                    for stat_config in stats_to_return:
+                        final_results[f"{r_metric_config}_{stat_config}"] = 0.0 # Default if metric type not found
+
+            return final_results if final_results else {"rouge_calculation_issue": 1.0} # Fallback if loop yields nothing
 
         except Exception as e:
-            logger.error(f"Error computing ROUGE score: {e}")
-            return {"rouge_error": 1.0} # Default error structure
+            logger.error(f"Error computing ROUGE score: {e}", exc_info=True)
+            return {"rouge_exception": 1.0}
+
 
 class PerplexityMetric(BaseMetric):
-    """Class for computing perplexity."""
+    """ Computes perplexity based on log probabilities of predictions. """
+
     def __init__(self):
+        """Initializes the PerplexityMetric instance."""
         super().__init__()
-        self.total_log_probs = 0.0
-        self.total_elements = 0 # Could be tokens or sequences depending on how PPL is defined for the task
+        self.total_log_probs: float = 0.0
+        self.total_elements: int = 0
 
     def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
         self.total_log_probs = 0.0
         self.total_elements = 0
 
-    def update_state(self, predictions: List[float], labels: List[Any]) -> None: 
+    def update_state(self, predictions: List[float], labels: List[Any]) -> None:
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch (log probabilities).
+        :param labels: List of ground truth labels for the current batch (not used in this metric).
+        """
+        # Assuming predictions are per-token or per-sequence log probabilities
         batch_log_probs = np.array(predictions, dtype=np.float64)
         self.total_log_probs += np.sum(batch_log_probs)
-        self.total_elements += len(batch_log_probs)
+        self.total_elements += len(batch_log_probs) # Or sum of token counts if predictions are per-token
 
     def result(self) -> float:
+        """ Computes and returns the perplexity value. """
         if self.total_elements == 0:
-            return 0.0 # Or a very high number for PPL, or NaN
+            logger.warning("Perplexity: No elements to compute perplexity.")
+            return float('inf') # Or 0.0, or a very high number. Inf is standard for PPL with no data.
         
         mean_log_probs = self.total_log_probs / self.total_elements
         cross_entropy = -mean_log_probs
         perplexity = np.exp(cross_entropy)
         
         if np.isnan(perplexity) or np.isinf(perplexity):
-            logger.warning(f"Perplexity resulted in NaN or Inf (cross_entropy: {cross_entropy}). Returning large value.")
-            return float(1e12) # Return a large number instead of NaN/Inf
+            logger.warning(f"Perplexity resulted in NaN or Inf (cross_entropy: {cross_entropy}).")
+            return float('inf') # Standard representation for undefined PPL
         return perplexity
 
 
-class ListAccumulatingMetric(BaseMetric): # Base for metrics that just collect and then compute
-    """Base class for metrics that accumulate all predictions and labels then compute."""
+class ListAccumulatingMetric(BaseMetric):
+    """Base class for metrics that accumulate lists of predictions and labels."""
+
     def __init__(self):
+        """Initializes the ListAccumulatingMetric instance."""
         super().__init__()
         self._collected_predictions: List[Any] = []
-        self._collected_labels: List[Any] # For some metrics, labels might be contexts etc.
+        self._collected_labels: List[Any] = []
 
     def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
         self._collected_predictions = []
-        self._collected_labels = [] # Ensure this is also initialized
+        self._collected_labels = []
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         self._collected_predictions.extend(predictions)
-        self._collected_labels.extend(labels) # Assuming labels are also collected
+        self._collected_labels.extend(labels)
 
-    @abstractmethod # Subclasses must implement their specific result calculation
+    @abstractmethod
     def result(self) -> Union[float, Dict[str, float]]:
         pass
 
 
-class METEORScoreMetric(ListAccumulatingMetric):
-    """Class for computing METEOR score."""
+class ItemScoringAverageMetric(BaseMetric):
+    """Base class for metrics that compute a score for each item and then average these scores."""
+
+    def __init__(self):
+        """Initializes the ItemScoringAverageMetric instance."""
+        super().__init__()
+        self.scores_sum: float = 0.0
+        self.items_count: int = 0
+
+    def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
+        self.scores_sum = 0.0
+        self.items_count = 0
+
+    @abstractmethod
+    def _calculate_item_score(self, prediction: Any, label: Any) -> Optional[float]:
+        """Subclasses must implement this to return a score for a single pred/label pair, or None to skip."""
+        raise NotImplementedError
+
+    def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
+        for pred_item, label_item in zip(predictions, labels):
+            try:
+                score = self._calculate_item_score(pred_item, label_item)
+                if score is not None:
+                    self.scores_sum += score
+                    self.items_count += 1
+            except Exception as e:
+                logger.error(f"Error calculating item score in {self.__class__.__name__} for pred '{str(pred_item)[:50]}': {e}", exc_info=False)
+
     def result(self) -> float:
-        from nltk.translate.meteor_score import meteor_score # Import here to avoid error if NLTK/meteor not fully set up
-        import nltk
-        nltk.download('wordnet', quiet=True) # Ensure wordnet is available for METEOR
+        """ Computes and returns the average score. """
+        if self.items_count == 0:
+            return 0.0
+        return self.scores_sum / self.items_count
+
+
+class METEORScoreMetric(ListAccumulatingMetric):
+    """ Computes METEOR score using NLTK's meteor_score function. """
+
+    def result(self) -> float:
+        """ Computes and returns the METEOR score. """
         if not self._collected_predictions or not self._collected_labels:
             return 0.0
-
-        # METEOR expects tokenized strings. Predictions/labels should be strings.
-        # The original code tokenized them if they weren't lists of tokens.
-        # Assuming _collected_predictions and _collected_labels are lists of strings.
         
-        tokenized_predictions = [p.split() for p in self._collected_predictions]
-        # meteor_score expects references as list of lists of tokens (even for single ref)
-        tokenized_labels_meteor = [[l.split()] for l in self._collected_labels]
+        # NLTK resource download handling
+        required_resources = [
+            ('corpora/wordnet', 'wordnet'),
+            ('corpora/omw-1.4', 'omw-1.4'), # Open Multilingual Wordnet, often needed
+            ('tokenizers/punkt', 'punkt')    # Punkt for tokenization if not already present
+        ]
+        
+        resources_downloaded_successfully = True
+        for resource_path, resource_name in required_resources:
+            try:
+                nltk.data.find(resource_path)
+            except LookupError:
+                logger.info(f"NLTK resource '{resource_name}' not found. Attempting download...")
+                try:
+                    nltk.download(resource_name, quiet=True)
+                    logger.info(f"NLTK resource '{resource_name}' downloaded successfully.")
+                except Exception as e:
+                    logger.error(f"Failed to download NLTK resource '{resource_name}': {e}. METEOR score might be 0.0 or inaccurate.")
+                    resources_downloaded_successfully = False
+            except Exception as e:
+                logger.error(f"Unexpected error checking NLTK resource '{resource_name}': {e}. METEOR score might be 0.0 or inaccurate.")
+                resources_downloaded_successfully = False
+        
+        if not resources_downloaded_successfully:
+            return 0.0
+
+        # METEOR expects tokenized strings.
+        tokenized_predictions = [str(p).split() for p in self._collected_predictions]
+        tokenized_labels_meteor = [[str(l).split()] for l in self._collected_labels] # References as list of lists of tokens
 
         alpha = self._options.get("alpha", 0.9)
         beta = self._options.get("beta", 3.0)
@@ -360,245 +527,251 @@ class METEORScoreMetric(ListAccumulatingMetric):
         
         scores = []
         for hyp_tokens, refs_tokens_list_for_one_hyp in zip(tokenized_predictions, tokenized_labels_meteor):
-            # refs_tokens_list_for_one_hyp is like [['ref1', 'tok1'], ['ref2', 'tok2']] if multiple actual refs
-            # For single reference, it's [['ref', 'tok']]
             try:
-                score = meteor_score(references=refs_tokens_list_for_one_hyp, hypothesis=hyp_tokens,
-                                     alpha=alpha, beta=beta, gamma=gamma)
+                score = nltk_meteor_score(references=refs_tokens_list_for_one_hyp, hypothesis=hyp_tokens,
+                                          alpha=alpha, beta=beta, gamma=gamma)
                 scores.append(score)
             except Exception as e:
-                logger.warning(f"Error calculating METEOR for one sentence: {e}")
+                logger.warning(f"Error calculating METEOR for one sentence pair: {e}")
         
         return np.mean(scores) if scores else 0.0
 
 
-class JaccardSimilarityMetric(BaseMetric):
-    """Class for computing Jaccard similarity between texts."""
+class JaccardSimilarityMetric(ItemScoringAverageMetric):
+    """ Computes Jaccard similarity score between predictions and labels. """
+
+    def _get_ngrams(self, text: str, n: int, normalize_text: bool):
+        """
+        Generates n-grams from the input text.
+        :param text: Input text to process.
+        :param n: Size of the n-grams.
+        :param normalize_text: Whether to normalize the text (e.g., lowercasing).
+        :return: Set of n-grams.
+        """
+        processed_text = str(text)
+        if normalize_text:
+            processed_text = processed_text.lower()
+        words = processed_text.split()
+        if len(words) < n:
+            return set()
+        return set(' '.join(words[i:i+n]) for i in range(len(words)-n+1))
+
+    def _calculate_item_score(self, prediction: Any, label: Any) -> Optional[float]:
+        """
+        Calculates the Jaccard similarity score for a single prediction-label pair.
+        :param prediction: Model prediction.
+        :param label: Ground truth label.
+        :return: Jaccard similarity score.
+        """
+        ngram_n = self._options.get("ngram", 1)
+        normalize = self._options.get("normalize", False)
+
+        pred_ngrams = self._get_ngrams(str(prediction), ngram_n, normalize)
+        label_ngrams = self._get_ngrams(str(label), ngram_n, normalize)
+        
+        intersection = len(pred_ngrams.intersection(label_ngrams))
+        union = len(pred_ngrams.union(label_ngrams))
+        
+        return intersection / union if union > 0 else 0.0
+
+
+class SemanticSimilarityMetric(ItemScoringAverageMetric):
+    """ Computes semantic similarity score using SentenceTransformer model. """
+
     def __init__(self):
+        """Initializes the SemanticSimilarityMetric instance."""
         super().__init__()
-        self.scores_sum = 0.0
-        self.count = 0
-
-    def reset_state(self) -> None:
-        self.scores_sum = 0.0
-        self.count = 0
-
-    def update_state(self, predictions: List[str], labels: List[str]) -> None:
-        ngram = self._options.get("ngram", 1)
-        normalize_text = self._options.get("normalize", False) # Renamed from 'normalize' to avoid conflict
-
-        def get_ngrams(text: str, n: int):
-            if normalize_text: # Use the option
-                text = text.lower()
-            words = text.split()
-            return set([' '.join(words[i:i+n]) for i in range(len(words)-n+1)])
-
-        for pred_text, label_text in zip(predictions, labels):
-            pred_ngrams = get_ngrams(str(pred_text), ngram)
-            label_ngrams = get_ngrams(str(label_text), ngram)
-            
-            intersection = len(pred_ngrams.intersection(label_ngrams))
-            union = len(pred_ngrams.union(label_ngrams))
-            
-            score = intersection / union if union > 0 else 0.0
-            self.scores_sum += score
-            self.count += 1
-            
-    def result(self) -> float:
-        if self.count == 0:
-            return 0.0
-        return self.scores_sum / self.count
-
-
-class SemanticSimilarityMetric(BaseMetric):
-    """Class for computing semantic similarity using sentence embeddings."""
-    def __init__(self):
-        super().__init__()
-        self.scores_sum = 0.0
-        self.count = 0
         self._model = None # SentenceTransformer model, initialized lazily
+        self._model_name: Optional[str] = None 
 
     def _initialize_model(self):
-        if self._model is None:
+        """Initializes the SentenceTransformer model."""
+        # Initialize only if model name changed or not initialized
+        model_name_option = self._options.get("model", 'all-MiniLM-L6-v2')
+        if self._model is None or self._model_name != model_name_option:
+            self._model_name = model_name_option
             try:
                 from sentence_transformers import SentenceTransformer
-                model_name = self._options.get("model", 'all-MiniLM-L6-v2')
-                self._model = SentenceTransformer(model_name)
+                self.logger.info(f"Initializing SentenceTransformer model: {self._model_name}")
+                self._model = SentenceTransformer(self._model_name)
             except ImportError:
                 logger.error("sentence_transformers library not found. SemanticSimilarityMetric will not work.")
-                raise
+                self._model = None # Ensure model is None if import fails
+                raise # Re-raise to signal failure clearly
             except Exception as e:
-                logger.error(f"Failed to load SentenceTransformer model: {e}")
-                raise
+                logger.error(f"Failed to load SentenceTransformer model '{self._model_name}': {e}")
+                self._model = None
+                raise # Re-raise
+
+    def _calculate_item_score(self, prediction: Any, label: Any) -> Optional[float]:
+        """
+        Calculates the semantic similarity score for a single prediction-label pair.
+        :param prediction: Model prediction.
+        :param label: Ground truth label.
+        :return: Semantic similarity score.
+        """
+        if self._model is None: # Attempt initialization if not done (e.g. first call)
+            try:
+                self._initialize_model()
+                if self._model is None: # Still None after attempt
+                    return None 
+            except Exception: # Initialization failed
+                 return None
+
+        from sklearn.metrics.pairwise import cosine_similarity # Keep import local to method
+
+        metric_type = self._options.get("metric_type", "cosine") # e.g. "cosine", "euclidean", "dot"
+                                                                # Renamed from "metric" to avoid conflict with base class usage of self._options
+        pred_emb = self._model.encode(str(prediction))
+        label_emb = self._model.encode(str(label))
+        
+        score = 0.0
+        if metric_type == 'cosine':
+            score = cosine_similarity([pred_emb], [label_emb])[0][0]
+        elif metric_type == 'euclidean':
+            dist = np.linalg.norm(pred_emb - label_emb)
+            score = 1 / (1 + dist) if dist is not None else 0.0 # Bounded score [0,1]
+        elif metric_type == 'dot':
+            score = np.dot(pred_emb, label_emb) # Unbounded, might need normalization depending on use case
+        else:
+            logger.warning(f"Unknown semantic similarity metric_type: {metric_type}. Returning 0 for this item.")
+            return 0.0 # Or None to skip
+        return float(score)
 
 
-    def reset_state(self) -> None:
-        self.scores_sum = 0.0
-        self.count = 0
-        # self._model = None # Don't reset model to avoid reloading, unless config changes
+class DistinctNGramMetric(ListAccumulatingMetric):
+    """ Computes distinct n-grams from the predictions. """
 
-    def update_state(self, predictions: List[str], labels: List[str]) -> None:
-        try:
-            self._initialize_model() # Ensure model is loaded
-            if self._model is None: return # Failed to load
-        except Exception:
-             return # Error already logged
-
-        from sklearn.metrics.pairwise import cosine_similarity # Import here
-
-        metric_type = self._options.get("metric", "cosine")
-
-        # Encode in batches for efficiency if sentence_transformers supports it well for many short texts
-        try:
-            # It's often better to encode all predictions and labels in a batch at once
-            all_texts_in_batch = predictions + labels
-            if not all_texts_in_batch: return
-
-            all_embeddings = self._model.encode(all_texts_in_batch)
-            num_preds = len(predictions)
-            pred_embeddings = all_embeddings[:num_preds]
-            label_embeddings = all_embeddings[num_preds:]
-
-            for i in range(num_preds):
-                pred_emb = pred_embeddings[i]
-                label_emb = label_embeddings[i]
-                score = 0.0
-                if metric_type == 'cosine':
-                    score = cosine_similarity([pred_emb], [label_emb])[0][0]
-                elif metric_type == 'euclidean':
-                    dist = np.linalg.norm(pred_emb - label_emb)
-                    score = 1 / (1 + dist) if dist is not None else 0.0
-                elif metric_type == 'dot':
-                    score = np.dot(pred_emb, label_emb)
-                else:
-                    logger.warning(f"Unknown semantic similarity metric type: {metric_type}")
-                    continue
-                
-                self.scores_sum += score
-                self.count += 1
-        except Exception as e:
-            logger.error(f"Error during semantic similarity batch update: {e}")
-
-
-    def result(self) -> float:
-        if self.count == 0:
-            return 0.0
-        return self.scores_sum / self.count
-
-
-class DistinctNGramMetric(ListAccumulatingMetric): # Inherits reset_state, update_state
-    """Computes distinct n-gram metrics for text diversity from collected texts."""
-    # update_state will collect predictions (texts). Labels are ignored for this metric.
-
-    def update_state(self, predictions: List[str], labels: List[Any]) -> None: # Labels ignored
-        self._collected_predictions.extend(predictions) # predictions are texts
+    def update_state(self, predictions: List[str], labels: List[Any]) -> None: # Labels are ignored
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch (not used).
+        """
+        self._collected_predictions.extend([str(p) for p in predictions])
 
     def result(self) -> Dict[str, float]:
+        """ Computes and returns distinct n-gram scores. """
         if not self._collected_predictions:
-            return {"distinct_1": 0.0, "distinct_2": 0.0} # Default if no texts
+            default_ngrams = self._options.get("ngrams", [1, 2])
+            return {f"distinct_{n}": 0.0 for n in default_ngrams}
 
         texts = self._collected_predictions
         ngram_sizes = self._options.get("ngrams", [1, 2]) # e.g., [1, 2] for distinct-1, distinct-2
         results = {}
 
-        for n in ngram_sizes:
-            all_ngrams_in_corpus = []
-            if not texts: continue
+        for n_val in ngram_sizes:
+            all_ngrams_in_corpus: List[str] = []
+            if not texts: continue # Should be caught by initial check but defensive
 
-            for text in texts:
-                if not isinstance(text, str):
-                    logger.warning(f"DistinctNGramMetric: item is not a string: {type(text)}. Skipping.")
-                    continue
-                words = text.split()
-                if len(words) < n : continue
-                for i in range(len(words) - n + 1):
-                    all_ngrams_in_corpus.append(" ".join(words[i:i+n]))
+            for text_item in texts:
+                words = text_item.split()
+                if len(words) < n_val: continue
+                for i in range(len(words) - n_val + 1):
+                    all_ngrams_in_corpus.append(" ".join(words[i:i+n_val]))
             
             if not all_ngrams_in_corpus:
-                results[f"distinct_{n}"] = 0.0
+                results[f"distinct_{n_val}"] = 0.0
                 continue
 
-            unique_ngrams = len(set(all_ngrams_in_corpus))
-            total_ngrams = len(all_ngrams_in_corpus)
-            results[f"distinct_{n}"] = unique_ngrams / total_ngrams if total_ngrams > 0 else 0.0
+            unique_ngrams_count = len(set(all_ngrams_in_corpus))
+            total_ngrams_count = len(all_ngrams_in_corpus)
+            results[f"distinct_{n_val}"] = unique_ngrams_count / total_ngrams_count if total_ngrams_count > 0 else 0.0
             
         return results
 
 
 class WordEntropyMetric(ListAccumulatingMetric):
-    """Computes word-level entropy for text generation."""
-    # update_state will collect predictions (texts). Labels are ignored.
-    def update_state(self, predictions: List[str], labels: List[Any]) -> None: # Labels ignored
-        self._collected_predictions.extend(predictions) # predictions are texts
+    """ Computes the entropy of words in the predictions. """
+
+    def update_state(self, predictions: List[str], labels: List[Any]) -> None: # Labels are ignored
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch (not used).
+        """
+        self._collected_predictions.extend([str(p) for p in predictions])
 
     def result(self) -> float:
+        """ Computes and returns the word entropy. """
         if not self._collected_predictions:
             return 0.0
 
-        texts = self._collected_predictions
-        word_counts = Counter()
-        total_words = 0
+        word_counts: Counter = Counter()
+        total_words: int = 0
         
-        for text in texts:
-            if not isinstance(text, str):
-                 logger.warning(f"WordEntropyMetric: item is not a string: {type(text)}. Skipping.")
-                 continue
-            words = text.split()
+        for text_item in self._collected_predictions:
+            words = text_item.split()
             word_counts.update(words)
             total_words += len(words)
             
         if total_words == 0:
             return 0.0
             
-        probs = [count / total_words for count in word_counts.values() if count > 0]
-        if not probs:
+        probabilities = [count / total_words for count in word_counts.values() if count > 0]
+        if not probabilities: # Handles case where all words were filtered or no words present
             return 0.0
             
-        return -sum(p * math.log(p, 2) for p in probs) # Log base 2 for bits
+        return -sum(p * math.log2(p) for p in probabilities) # Log base 2 for bits
 
 
-class CorrelationMetric(ListAccumulatingMetric): # Base for Pearson, Spearman
-    """Base for correlation metrics."""
+class CorrelationMetric(ListAccumulatingMetric):
+    """ Computes correlation between predictions and labels using scipy's pearsonr or spearmanr. """
+
     def _compute_correlation(self, func) -> float:
+        """
+        Computes the correlation using the provided function (pearsonr or spearmanr).
+        :param func: The correlation function to use.
+        :return: Computed correlation value.
+        """
         if not self._collected_predictions or not self._collected_labels:
             return 0.0
         if len(self._collected_predictions) < 2 or len(self._collected_labels) < 2: # Correlation needs at least 2 points
-            return 0.0
-        # Ensure predictions and labels are numeric
-        try:
-            numeric_preds = [float(p) for p in self._collected_predictions]
-            numeric_labels = [float(l) for l in self._collected_labels]
-        except ValueError:
-            logger.error(f"{self.__class__.__name__}: Predictions or labels are not numeric.")
+            logger.warning(f"{self.__class__.__name__}: Need at least 2 data points to compute correlation. Got {len(self._collected_predictions)}.")
             return 0.0
         
         try:
-            corr_value, _ = func(numeric_preds, numeric_labels)
+            numeric_preds = [float(p) for p in self._collected_predictions]
+            numeric_labels = [float(l) for l in self._collected_labels]
+        except (ValueError, TypeError) as e:
+            logger.error(f"{self.__class__.__name__}: Predictions or labels are not all numeric. Error: {e}")
+            return 0.0
+        
+        try:
+            correlation_result = func(numeric_preds, numeric_labels)
+            corr_value = correlation_result[0] if isinstance(correlation_result, tuple) else correlation_result
             return corr_value if not np.isnan(corr_value) else 0.0
         except Exception as e:
             logger.error(f"Error computing correlation for {self.__class__.__name__}: {e}")
             return 0.0
 
 class PearsonCorrelationMetric(CorrelationMetric):
+    """ Computes Pearson correlation coefficient. """
+
     def result(self) -> float:
         return self._compute_correlation(pearsonr)
 
 class SpearmanCorrelationMetric(CorrelationMetric):
+    """ Computes Spearman rank-order correlation coefficient. """
+
     def result(self) -> float:
         return self._compute_correlation(spearmanr)
 
 
 class SequenceLabelingMetrics(ListAccumulatingMetric):
-    """Computes sequence labeling metrics (NER, POS tagging, etc.) using seqeval."""
-    # update_state collects predictions (List[List[str]]) and labels (List[List[str]])
-    
-    def result(self) -> Dict[str, float]:
-        if not self._collected_predictions or not self._collected_labels:
-            return {"precision": 0.0, "recall": 0.0, "f1": 0.0} # Default structure
+    """ Computes sequence labeling metrics using seqeval library. """
 
-        # Options for seqeval
-        scheme = self._options.get("scheme", None) # e.g., 'IOB2', 'BIOES'
+    def result(self) -> Dict[str, float]:
+        """
+        Computes and returns sequence labeling metrics.
+        :return: Dictionary with precision, recall, and F1 scores.
+        """
+        if not self._collected_predictions or not self._collected_labels:
+            return {"overall_precision": 0.0, "overall_recall": 0.0, "overall_f1": 0.0}
+
+        scheme = self._options.get("scheme", None) 
         mode = self._options.get("mode", "default") # 'strict' or 'default'
+        average_type = self._options.get("average_type", "micro avg") # 'micro avg', 'macro avg', 'weighted avg'
         
         try:
             report = seqeval_classification_report(
@@ -607,215 +780,285 @@ class SequenceLabelingMetrics(ListAccumulatingMetric):
                 mode=mode, 
                 scheme=scheme, 
                 output_dict=True,
-                zero_division=0 # Consistent with sklearn metrics
+                zero_division=0 
             )
             
-            # Extract overall metrics (micro or weighted average)
-            if 'micro avg' in report: # Often used for token-level overall performance
+            if average_type in report:
+                avg_metrics = report[average_type]
                 return {
-                    'precision': report['micro avg']['precision'],
-                    'recall': report['micro avg']['recall'],
-                    'f1': report['micro avg']['f1-score']
+                    f'overall_precision': avg_metrics.get('precision', 0.0),
+                    f'overall_recall': avg_metrics.get('recall', 0.0),
+                    f'overall_f1': avg_metrics.get('f1-score', 0.0) # f1-score is the key from seqeval
                 }
-            elif 'weighted avg' in report: # Fallback if micro avg not present
-                return {
-                    'precision': report['weighted avg']['precision'],
-                    'recall': report['weighted avg']['recall'],
-                    'f1': report['weighted avg']['f1-score']
-                }
-            else: # No overall average found, try to report something or default
-                logger.warning("No 'micro avg' or 'weighted avg' in seqeval report. Check report structure.")
-                # You might want to average class F1s or return a specific class's score
-                # For now, returning default on failure to find standard averages.
-                first_class_key = next(iter(k for k in report.keys() if isinstance(report[k], dict) and 'f1-score' in report[k]), None)
-                if first_class_key:
+            else:
+                logger.warning(f"Average type '{average_type}' not found in seqeval report. Available keys: {list(report.keys())}. Defaulting overall scores to 0.")
+                # Fallback to first available class if no standard average is found, or just return 0s
+                first_class_key = next((k for k in report if isinstance(report[k], dict) and 'f1-score' in report[k]), None)
+                if first_class_key and isinstance(report[first_class_key], dict):
+                     class_metrics = report[first_class_key]
                      return {
-                        'precision': report[first_class_key]['precision'],
-                        'recall': report[first_class_key]['recall'],
-                        'f1': report[first_class_key]['f1-score'],
-                        'class_reported': first_class_key
-                    }
-                return {"precision": 0.0, "recall": 0.0, "f1": 0.0, "error": "No standard average in report"}
+                        f'{first_class_key}_precision': class_metrics.get('precision',0.0),
+                        f'{first_class_key}_recall': class_metrics.get('recall',0.0),
+                        f'{first_class_key}_f1': class_metrics.get('f1-score',0.0),
+                     }
+                return {"overall_precision": 0.0, "overall_recall": 0.0, "overall_f1": 0.0, "error": f"Average type '{average_type}' not found."}
 
         except Exception as e:
-            logger.error(f"Error computing SequenceLabelingMetrics with seqeval: {e}")
-            return {"precision": 0.0, "recall": 0.0, "f1": 0.0, "error": str(e)}
+            logger.error(f"Error computing SequenceLabelingMetrics with seqeval: {e}", exc_info=True)
+            return {"overall_precision": 0.0, "overall_recall": 0.0, "overall_f1": 0.0, "error": str(e)}
 
 
 class BERTScoreMetric(ListAccumulatingMetric):
-    """Computes BERTScore for text generation evaluation."""
+    """ Computes BERTScore using the `bert_score` library. """
+
     def result(self) -> Dict[str, float]:
+        """
+        Computes and returns BERTScore.
+        :return: Dictionary with precision, recall, and F1 scores.
+        """
         if not self._collected_predictions or not self._collected_labels:
             return {"bertscore_precision": 0.0, "bertscore_recall": 0.0, "bertscore_f1": 0.0}
 
-        # Options for bert_score
         lang = self._options.get("lang", "en")
-        model_type = self._options.get("model_type", None) # bert_score lib will use default if None
-        # Other bert_score.score params: num_layers, verbose, idf, batch_size, device, etc.
-        # Can be passed via self._options.get('bertscore_options', {})
+        model_type = self._options.get("model_type", None) 
         
-        bertscore_options = {
+        bertscore_fn_options = {
             "lang": lang,
             "verbose": self._options.get("verbose", False),
-            "idf": self._options.get("idf", False),
-            "batch_size": self._options.get("batch_size", 64), # bert_score's internal batch_size
-            "device": self._options.get("device", None) # Let bert_score auto-detect or specify
+            "idf": self._options.get("idf", False), # Pass idf from options
+            "batch_size": self._options.get("bertscore_batch_size", 64), # Specific option for bert_score's internal batching
+            "device": self._options.get("device", None) # Allow specifying device for bert_score
         }
-        if model_type: # Only add if specified, otherwise library default.
-            bertscore_options["model_type"] = model_type
+        if model_type:
+            bertscore_fn_options["model_type"] = model_type
         
         try:
-            P, R, F1 = bert_score.score(
-                cands=self._collected_predictions,
-                refs=self._collected_labels,
-                **bertscore_options
+            # Ensure all predictions and labels are strings
+            str_predictions = [str(p) for p in self._collected_predictions]
+            str_labels = [str(l) for l in self._collected_labels]
+
+            precision, recall, f1 = bert_score.score(
+                cands=str_predictions,
+                refs=str_labels,
+                **bertscore_fn_options
             )
             return {
-                "bertscore_precision": P.mean().item(),
-                "bertscore_recall": R.mean().item(),
-                "bertscore_f1": F1.mean().item()
+                "bertscore_precision": precision.mean().item(),
+                "bertscore_recall": recall.mean().item(),
+                "bertscore_f1": f1.mean().item()
             }
         except Exception as e:
-            logger.error(f"Error computing BERTScore: {e}")
+            logger.error(f"Error computing BERTScore: {e}", exc_info=True)
             return {"bertscore_precision": 0.0, "bertscore_recall": 0.0, "bertscore_f1": 0.0, "error": str(e)}
 
 
-class HFcommonPipelineMetric(BaseMetric): # Common base for HF pipeline based metrics
-    """Base for metrics using Hugging Face pipelines, computes average score."""
+class HFcommonPipelineMetric(BaseMetric):
+    """Base class for metrics using Hugging Face pipelines."""
+
     def __init__(self):
+        """Initializes the HFcommonPipelineMetric instance."""
         super().__init__()
-        self.scores_sum = 0.0
-        self.count = 0
+        self.scores_sum: float = 0.0
+        self.items_count: int = 0 # Renamed from self.count for clarity
         self._pipeline = None
-        self._pipeline_task_name: str = "" # e.g. "question-answering"
-        self._pipeline_model_name: str = "" # e.g. "valhalla/squad-small-finetuned-bert-base-uncased"
-        self._score_key_in_result: str = "score" # Key to extract score from pipeline output
-        self._result_if_no_data: Any = 0.0
+        self._pipeline_task_name: str = "" 
+        self._pipeline_model_name_default: str = "" # Default model for the pipeline if not in options
+        self._pipeline_model_name_actual: Optional[str] = None # Actual model name used after checking options
+        self._score_key_in_result: str = "score" 
+        self._result_if_no_data: Any = 0.0 # What to return if no items were processed
 
 
-    def _initialize_pipeline(self):
-        if self._pipeline is None:
-            try:
-                # Get model name from options, fallback to a default if specified in class
-                model_name_from_options = self._options.get("model", self._pipeline_model_name)
-                if not model_name_from_options:
-                    logger.error(f"No model specified for {self.__class__.__name__} pipeline.")
-                    return False
-                
-                self._pipeline = pipeline(self._pipeline_task_name, model=model_name_from_options, device=-1) # device=-1 for CPU, or configure
-                logger.info(f"Initialized {self._pipeline_task_name} pipeline with model {model_name_from_options} for {self.__class__.__name__}")
-                return True
-            except Exception as e:
-                logger.error(f"Failed to load HF pipeline for {self.__class__.__name__} (task: {self._pipeline_task_name}, model: {model_name_from_options}): {e}")
-                return False
-        return True
+    def _initialize_pipeline(self) -> bool:
+        """
+        Initializes the Hugging Face pipeline if not already initialized or if model name has changed.
+        :return: True if pipeline is successfully initialized, False otherwise.
+        """
+        # Initialize only if model name from options has changed or not initialized
+        model_name_from_options = self._options.get("model", self._pipeline_model_name_default)
+        
+        if self._pipeline is not None and self._pipeline_model_name_actual == model_name_from_options:
+            return True # Already initialized with the correct model
+
+        self._pipeline_model_name_actual = model_name_from_options
+        if not self._pipeline_model_name_actual: # Check if a model name is actually determined
+            logger.error(f"No model name specified or defaulted for {self.__class__.__name__} pipeline.")
+            self._pipeline = None # Ensure pipeline is None
+            return False
+        
+        try:
+            # Specify device, can be made configurable via self._options.get("device", "cpu") for example
+            # Using -1 for CPU to avoid assuming CUDA for these helper pipelines by default.
+            # Or self._options.get("pipeline_device")
+            pipeline_device = self._options.get("device", -1 if not torch.cuda.is_available() else 0) 
+            logger.info(f"Initializing HF pipeline '{self._pipeline_task_name}' with model '{self._pipeline_model_name_actual}' on device '{pipeline_device}' for {self.__class__.__name__}")
+            self._pipeline = pipeline(self._pipeline_task_name, model=self._pipeline_model_name_actual, device=pipeline_device)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to load HF pipeline for {self.__class__.__name__} (task: {self._pipeline_task_name}, model: {self._pipeline_model_name_actual}): {e}", exc_info=True)
+            self._pipeline = None
+            return False
 
 
     def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
         self.scores_sum = 0.0
-        self.count = 0
-        # self._pipeline = None # Avoid re-initializing pipeline on every task run unless config changes
+        self.items_count = 0
+        # Do not reset self._pipeline here to allow reuse across evaluations if config doesn't change.
+        # It will be re-initialized if model_name_from_options changes.
 
-    def _process_item(self, prediction: Any, label: Any) -> Union[float, None]:
-        """
-        Process a single prediction/label pair using the HF pipeline.
-        To be implemented by subclasses.
-        Should return the score for the item, or None if failed.
-        """
-        raise NotImplementedError("Subclasses must implement _process_item.")
+    @abstractmethod
+    def _process_pipeline_output(self, output: Any, prediction: Any, label: Any) -> Optional[float]:
+        """Subclasses must implement this to extract a meaningful score from the pipeline's output."""
+        raise NotImplementedError
 
     def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
         if not self._initialize_pipeline() or self._pipeline is None:
-            logger.warning(f"Pipeline for {self.__class__.__name__} not available. Skipping update.")
+            logger.warning(f"Pipeline for {self.__class__.__name__} not available or failed to initialize. Skipping update.")
             return
 
         for pred_item, label_item in zip(predictions, labels):
             try:
-                score = self._process_item(pred_item, label_item)
+                # Subclasses might need to format input to the pipeline differently
+                pipeline_input = self._prepare_pipeline_input(pred_item, label_item)
+                pipeline_output = self._pipeline(pipeline_input) if isinstance(pipeline_input, (str, list)) else self._pipeline(**pipeline_input)
+                
+                score = self._process_pipeline_output(pipeline_output, pred_item, label_item)
                 if score is not None:
                     self.scores_sum += score
-                    self.count += 1
+                    self.items_count += 1
             except Exception as e:
-                logger.error(f"Error processing item in {self.__class__.__name__} for pred '{str(pred_item)[:50]}': {e}", exc_info=False)
+                logger.error(f"Error processing item in {self.__class__.__name__} for pred '{str(pred_item)[:50]}': {e}", exc_info=False) # exc_info=False for less verbose logs by default
 
+    def _prepare_pipeline_input(self, prediction: Any, label: Any) -> Any:
+        """
+        Prepares input for the Hugging Face pipeline.
+        Default implementation assumes prediction is the primary text.
+        Subclasses should override if different input structure is needed.
+        :param prediction: Model prediction.
+        :param label: Ground truth label (not used in default).
+        :return: Input for the pipeline.
+        """
+        return str(prediction) # Default: pipeline takes the prediction text
 
-    def result(self) -> Any: # Can be float or Dict
-        if self.count == 0:
+    def result(self) -> Any:
+        """ Computes and returns the average score. """
+        if self.items_count == 0:
             return self._result_if_no_data
-        return self.scores_sum / self.count
+        return self.scores_sum / self.items_count
 
 
 class FactualConsistencyMetric(HFcommonPipelineMetric):
-    """Computes factual consistency between answer and context (label)."""
+    """ Computes factual consistency using a question-answering pipeline. """
+
     def __init__(self):
+        """Initializes the FactualConsistencyMetric instance."""
+         # Initialize the base class
+         # Set default model and task name for the pipeline
+         # Set the key in the result dict to extract the score
         super().__init__()
         self._pipeline_task_name = "question-answering"
-        # Default model, can be overridden by "model" in options
-        self._pipeline_model_name = self._options.get("model", "deepset/tinyroberta-squad2") # or a larger one
-        self._score_key_in_result = "score" # QA pipeline returns 'score'
-        # Factual consistency might be binary (consistent/not) based on threshold, or average confidence.
-        # Here, we'll average the QA model's confidence score for the answer being found in the context.
+        self._pipeline_model_name_default = "deepset/tinyroberta-squad2" 
+        self._score_key_in_result = "score" 
 
-    def _process_item(self, prediction_answer: str, label_context: str) -> Union[float, None]:
-        if not self._pipeline: return None
-        # Prediction is the answer, Label is the context
-        try:
-            # The "question" is the generated answer, "context" is the source document/label
-            qa_input = {"question": str(prediction_answer), "context": str(label_context)}
-            # max_answer_len=100 # from original, maybe not needed if we just want confidence
-            result = self._pipeline(qa_input, max_answer_len=len(str(prediction_answer)) + 20) # Give some leeway
+    def _prepare_pipeline_input(self, prediction: Any, label: Any) -> Dict[str, str]:
+        """
+        Prepares input for the Hugging Face pipeline.
+        :param prediction: Model prediction (question).
+        :param label: Ground truth label (context).
+        :return: Dictionary with 'question' and 'context' keys.
+        """
+        # Prediction is the generated answer, Label is the context document
+        return {"question": str(prediction), "context": str(label)}
+
+    def _process_pipeline_output(self, output: Any, prediction: Any, label: Any) -> Optional[float]:
+        """
+        Processes the output from the pipeline to extract the score.
+        :param output: Output from the pipeline.
+        :param prediction: Model prediction (question).
+        :param label: Ground truth label (context).
+        :return: Confidence score for the factual consistency.
+        """
+        # QA pipeline output is a dict e.g. {'score': 0.99, 'start': 3, 'end': 10, 'answer': 'extracted'}
+        if isinstance(output, dict) and self._score_key_in_result in output:
+            confidence_score = output[self._score_key_in_result]
             
-            # Interpretation: if the answer (question) is found in the context with high confidence,
-            # it's considered consistent.
-            # A more robust factual consistency might involve NLI models.
-            # This is a proxy using QA.
-            # We use the score directly as a measure of consistency.
-            # Original used a threshold: 1.0 if result['score'] > 0.5 else 0.0
-            # Let's stick to averaging the score for now, or make threshold configurable.
+            # Option to use a threshold for binary consistency
             threshold = self._options.get("consistency_threshold", None)
             if threshold is not None:
-                return 1.0 if result[self._score_key_in_result] >= threshold else 0.0
-            return result[self._score_key_in_result] 
-        except Exception as e:
-            # Log specific error for QA failure
-            logger.debug(f"FactualConsistencyMetric: QA pipeline error for q='{str(prediction_answer)[:50]}', c='{str(label_context)[:50]}': {e}")
-            return None # Or 0.0 if preferred on error
+                return 1.0 if confidence_score >= threshold else 0.0
+            return float(confidence_score) # Return raw confidence
+        else:
+            logger.warning(f"FactualConsistency: Unexpected pipeline output format: {output}")
+            return None
 
 
 class ToxicityScoreMetric(HFcommonPipelineMetric):
-    """Computes toxicity score using pre-trained classifier."""
+    """ Computes toxicity score using a text-classification pipeline. """
+
     def __init__(self):
+        """Initializes the ToxicityScoreMetric instance."""
         super().__init__()
         self._pipeline_task_name = "text-classification"
-        # Default model, can be overridden by "model" in options
-        self._pipeline_model_name = self._options.get("model", "unitary/toxic-bert")
-        # This pipeline can return multiple labels (TOXICITY, SEVERE_TOXICITY, etc.)
-        # We need to specify which score to average or return a dict.
-        # For simplicity, let's average the score for the 'TOXICITY' label.
-        self._target_label_for_score = self._options.get("target_label", "TOXICITY").upper()
-        self._result_if_no_data = {"toxicity": 0.0} # Default dict structure
+        self._pipeline_model_name_default = "unitary/toxic-bert"
+        self._target_label_for_score: str = "TOXICITY" # Default label to extract score for
+        self._result_if_no_data = {self._target_label_for_score.lower(): 0.0} 
 
-    def _process_item(self, prediction_text: str, label: Any) -> Union[float, None]: # Label is ignored
-        if not self._pipeline: return None
-        try:
-            # The pipeline might return a list of dicts if top_k=None (which it is by default for this task)
-            results = self._pipeline(str(prediction_text), top_k=None) # Get all label scores
-            if results and isinstance(results, list) and isinstance(results[0], list): # Check for nested list output
-                results = results[0] # Take the first list if pipeline wraps output
+    def _initialize_pipeline(self) -> bool:
+        """
+        Initializes the Hugging Face pipeline for toxicity scoring.
+        :return: True if pipeline is successfully initialized, False otherwise.
+        """
+        # Update target label from options before initializing (in case model output labels change)
+        self._target_label_for_score = str(self._options.get("target_label", "TOXICITY")).upper()
+        self._result_if_no_data = {self._target_label_for_score.lower(): 0.0}
+        return super()._initialize_pipeline()
 
-            for res_item in results:
+
+    def _prepare_pipeline_input(self, prediction: Any, label: Any) -> Any: # Label is ignored for toxicity
+        """
+        Prepares input for the Hugging Face pipeline.
+        :param prediction: Model prediction (text to classify).
+        :param label: Ground truth label (not used).
+        :return: Input for the pipeline.
+        """
+        return str(prediction)
+
+    def _process_pipeline_output(self, output: Any, prediction: Any, label: Any) -> Optional[float]:
+        """
+        Processes the output from the pipeline to extract the toxicity score.
+        :param output: Output from the pipeline.
+        :param prediction: Model prediction (text).
+        :param label: Ground truth label (not used).
+        :return: Toxicity score for the prediction.
+        """
+        # Text-classification pipeline can return a list of dicts (if top_k=None or >1)
+        # or a single dict (if top_k=1, which is often default for single label tasks)
+        # [{'label': 'LABEL_1', 'score': 0.9}, {'label': 'LABEL_0', 'score': 0.1}]
+        if not isinstance(output, list): # Ensure it's a list for uniform processing
+            output = [output]
+
+        for res_item in output:
+            if isinstance(res_item, dict) and 'label' in res_item and 'score' in res_item:
                 if res_item['label'].upper() == self._target_label_for_score:
-                    return res_item['score']
-            logger.warning(f"ToxicityScoreMetric: Target label '{self._target_label_for_score}' not found in pipeline results: {results}")
-            return None # Target label not found
-        except Exception as e:
-            logger.debug(f"ToxicityScoreMetric: Pipeline error for text '{str(prediction_text)[:50]}': {e}")
-            return None
+                    return float(res_item['score'])
+            else:
+                logger.warning(f"ToxicityScoreMetric: Unexpected item format in pipeline result: {res_item}")
+        
+        # If target label not found in any of the results
+        # Log available labels for debugging if a list of dicts was returned
+        available_labels = [item.get('label', 'N/A') for item in output if isinstance(item, dict)]
+        logger.warning(f"ToxicityScoreMetric: Target label '{self._target_label_for_score}' not found in pipeline results. Available: {available_labels}")
+        return None 
 
-    def result(self) -> Dict[str, float]: # Overriding to return a dict
-        # The original returned a dict with "toxicity" and "severe_toxicity"
-        # This refactored one (using HFcommonPipelineMetric) averages one target label.
-        # To match original, this would need to be more custom.
-        # For now, it returns average of self._target_label_for_score
-        avg_score = super().result() # This will be a float (average of the target label)
-        return {self._target_label_for_score.lower(): avg_score}
+    def result(self) -> Dict[str, float]: # Override to always return a dict for the target label
+        """
+        Computes and returns the average toxicity score.
+        :return: Dictionary with the average toxicity score.
+        """
+        avg_score = super().result() # This gets the float average from base class
+        return {self._target_label_for_score.lower(): float(avg_score) if isinstance(avg_score, (float, int)) else 0.0}
