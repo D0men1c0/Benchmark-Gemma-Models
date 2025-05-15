@@ -6,7 +6,7 @@ trl==0.15.2
 tokenizers==0.21.0
 safetensors==0.5.3
 bitsandbytes==0.45.3
-accelerate==1.4.0
+accelerate==1.6.0
 ctransformers==0.2.27
 pandas==2.2.3
 numpy==2.2.3
@@ -31,3 +31,4 @@ sentence_transformers==4.0.1
 sequeseqeval==1.2.2
 bert-score==0.3.10
 pydantic==2.11.3
+nltk==3.9.1
