@@ -19,7 +19,7 @@ tasks:
         source_type: "hf_hub"
         config: "all" # Using all MMLU subjects
         split: "validation"
-        max_samples: 10 # Limit to 10 samples for testing
+        max_samples: 100 # Limit to 100 samples for testing
     handler_options:
       prompt_builder_type: "mmlu" # Uses MMLUPromptBuilder
       prompt_template: |
@@ -33,30 +33,58 @@ tasks:
     evaluation_metrics:
       - name: exact_match
         options: { normalize: true, ignore_case: true, ignore_punct: true }
+      - name: accuracy
+        options: {}
+      - name: f1_score
+        options: { average: "weighted" }
+      - name: precision
+        options: { average: "weighted" }
+      - name: recall
+        options: { average: "weighted" }
+      - name: rouge
+        options:
+          metrics: ['rouge1', 'rouge2', 'rougeL']
+          stats: ['f']                         
+      - name: bleu
+        options: {}
+      - name: meteor
+        options: {} 
+      - name: bert_score
+        options: { lang: "en" }
 
   # --- Task 2: GSM8K (Reasoning Text Analysis) ---
   - name: "GSM8K (Reasoning Text Analysis)"
     type: "math_reasoning_generation"
-    description: "Grade school math problems. Evaluates the textual properties of the generated reasoning steps."
+    description: "Grade school math problems. Evaluates the textual properties of the generated reasoning steps and the final answer."
     datasets:
       - name: "gsm8k"
         source_type: "hf_hub"
         config: "main"
         split: "test"
-        max_samples: 10 # Limit to 10 samples for testing
+        max_samples: 100
     handler_options:
       prompt_builder_type: "default"
       prompt_template: "Solve the following math problem step-by-step. Your final answer should be a number, formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
-      postprocessor_key: "default" # Uses DefaultPostProcessor to keep the full reasoning string
+      # For evaluating the final numerical answer, you need a postprocessor that extracts it.
+      # 'gsm8k' postprocessor_key is designed for this.
+      postprocessor_key: "gsm8k" # IMPORTANT: This extracts the final number for exact_match
     evaluation_metrics:
+      - name: exact_match # Evaluates the correctness of the *extracted numerical answer*
+        options: {}      # Normalization options might be useful depending on how numbers are formatted
+      # The following metrics evaluate the properties of the *full generated reasoning text*:
       - name: rouge # Compares textual similarity of the reasoning steps
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL']
-          stats: ['f']
+          stats: ['f', 'p', 'r'] # You can choose f, p, r or combinations
       - name: bert_score # Compares semantic similarity of the reasoning steps
         options: { lang: "en" }
       - name: distinct_ngram # Calculates lexical diversity in the reasoning text
         options: { ngrams: [1, 2, 3] }
+      - name: word_entropy # Another measure of text diversity/predictability
+        options: {}
+      # Perplexity could also be interesting for the generated reasoning steps
+      # - name: perplexity
+      #   options: {} # Requires model to output log_probs or for it to be calculated.
 
   # --- Task 3: Summarization (CNN/DailyMail) ---
   - name: "CNN/DailyMail Summarization"
@@ -67,19 +95,32 @@ tasks:
         source_type: "hf_hub"
         config: "3.0.0"
         split: "test"
-        max_samples: 10 # Limit to 10 samples for testing
+        max_samples: 100
     handler_options:
       prompt_builder_type: "default"
       prompt_template: "Summarize the following article in a few sentences:\n\nArticle: {article_text}\n\nSummary:"
+      postprocessor_key: "summarization" # Uses default post-processing for summaries
     evaluation_metrics:
       - name: rouge
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
-          stats: ['f', 'p', 'r']
+          stats: ['f', 'p', 'r'] # Common to report all for summarization
       - name: bert_score
         options: { lang: "en" }
-      - name: distinct_ngram
-        options: { ngrams: [1, 2, 3] }
+      - name: meteor # Often used for summarization alongside ROUGE
+        options: {}
+      - name: bleu # Less common for summarization than ROUGE/METEOR but can be included
+        options: {}
+      - name: distinct_ngram # Lexical diversity of the summary
+        options: { ngrams: [1, 2, 3, 4] } # Can check up to 4-grams
+      - name: word_entropy # Entropy of the summary
+        options: {}
+      # Perplexity of the generated summary
+      # - name: perplexity
+      #   options: {}
+      # Semantic Similarity can be an alternative or complement to BERTScore
+      # - name: semantic_similarity 
+      #   options: { model: 'all-MiniLM-L6-v2', metric_type: "cosine" } # metric_type was a previous suggestion
 
   # --- Task 4: Translation (OPUS-100 English to French) ---
   - name: "OPUS-100 English-to-French"
@@ -88,17 +129,32 @@ tasks:
     datasets:
       - name: "opus100"
         source_type: "hf_hub"
-        config: "en-fr" # This is passed as 'dataset_config_name' to the handler
+        config: "en-fr" 
         split: "validation"
-        max_samples: 10 # Limit to 10 samples for testing
+        max_samples: 100
     handler_options:
-      prompt_builder_type: "translation" # Uses TranslationPromptBuilder
+      prompt_builder_type: "translation" 
       prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}: {input_text}"
+      postprocessor_key: "translation" # Uses default post-processing for translations
     evaluation_metrics:
       - name: bleu
-        options: {} # Uses default BLEU settings in your metric
+        options: {} # Default BLEU-4 with smoothing method1
+                     # Can add: { weights: [0.25,0.25,0.25,0.25], smoothing: "method7" } for example
       - name: meteor
-        options: {} # Uses default METEOR settings
+        options: {} # Default METEOR
+                     # Can add: { alpha: 0.9, beta: 3.0, gamma: 0.5 }
+      - name: rouge # ROUGE can also be used for translation, though less primary than BLEU/METEOR
+        options:
+          metrics: ['rougeL']
+          stats: ['f']
+      - name: bert_score # Semantic similarity
+        options: { lang: "fr" } # Target language is French
+      # Perplexity of the translated text
+      # - name: perplexity
+      #   options: {}
+      # Semantic Similarity can also be used here
+      # - name: semantic_similarity
+      #   options: { model: 'paraphrase-multilingual-MiniLM-L12-v2', metric_type: "cosine" } # A multilingual model
 
 # ============================
 # Models Configuration
@@ -111,6 +167,8 @@ models:
     checkpoint: "google/gemma-7b"
     quantization: "4bit" # Or "8bit" or null (None in Python)
     offloading: true
+    torch_dtype: "bfloat16" # Use bfloat16 for better performance on GPUs with Tensor Cores
+
   - name: "gemma-2b"
     variant: "gemma"
     size: "2B"
@@ -118,6 +176,8 @@ models:
     checkpoint: "google/gemma-2b"
     quantization: "4bit"
     offloading: true
+    torch_dtype: "bfloat16"
+
   - name: "gpt2" # Added GPT-2 base model
     variant: "gpt2"
     size: "124M" # Standard GPT-2 small
