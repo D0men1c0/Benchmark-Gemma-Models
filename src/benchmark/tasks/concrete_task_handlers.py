@@ -205,42 +205,59 @@ class MathReasoningGenerationTaskHandler(TaskHandler):
             handler_args=builder_handler_args
         )
 
-    def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    def process_batch(self, batch: Dict[str, Any]) -> Dict[str, List[Any]]:
         """
         Process a batch of math reasoning questions.
         :param batch: Dictionary containing the batch data.
                       Expected keys: "input_text", "target_text".
-        :return: Tuple of generated outputs and corresponding labels.
+        :return: Dictionary with keys:
+                 - "text_predictions": Generated reasoning and answers.
+                    - "exact_match_predictions": Processed predictions for exact match.
         """
         inputs = _ensure_list(batch.get("input_text", []))
-        labels = _ensure_list(batch.get("target_text", []))
+        labels_full_text = _ensure_list(batch.get("target_text", [])) 
+
         if not inputs:
-            self.logger.warning("MathReasoning: No input_text found; returning empty.")
-            return [], []
+            self.logger.warning("MathReasoning: No input_text found; returning empty outputs.")
+            return {"text_predictions": [], "exact_match_predictions": [], "labels": []}
+        
         batch_items_for_prompting = [{"input_text": q} for q in inputs]
         prompts = self.prompt_builder.build_prompts(batch_items_for_prompting)
+
         if not prompts:
             self.logger.warning("MathReasoning: No prompts generated.")
-            return [], labels
-        raw_outputs = self._generate_text(prompts)
-        return self._post_process(raw_outputs, labels, batch)
+            return {"text_predictions": [], "exact_match_predictions": [], "labels": labels_full_text}
 
-    def _post_process(self, outputs: List[str], labels: List[str], batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        # Generate text using the model
+        raw_model_outputs = self._generate_text(prompts)
+
+        # Ensure the number of outputs matches the number of labels
+        exact_match_processed_predictions, exact_match_processed_labels = self._post_process_for_exact_match(raw_model_outputs, labels_full_text, batch)
+
+        return {
+            "text_predictions": raw_model_outputs, # Per ROUGE, BERTScore, DistinctNGram, WordEntropy
+            "exact_match_predictions": exact_match_processed_predictions, # Per ExactMatchMetric
+            "labels_for_text": labels_full_text, # Riferimenti per metriche testuali
+            "labels_for_exact_match": exact_match_processed_labels # Riferimenti per exact match
+        }
+
+    def _post_process_for_exact_match(self, outputs: List[str], labels: List[str], batch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         """
-        Post-processes the outputs and labels.
+        Post-processes outputs specifically for GSM8K exact match on the final number.
         :param outputs: Raw generated text from the model for the batch.
         :param labels: Raw labels from the dataset batch.
         :param batch: The original batch data (optional).
         :return: Tuple of (processed_predictions, processed_labels).
                   Predictions are cleaned to extract the final number.
         """
-        key = self.advanced_args.get("postprocessor_key", "gsm8k")
+        key = self.advanced_args.get("postprocessor_key", "gsm8k") # Should be "gsm8k"
         try:
             proc = PostProcessorFactory.get_processor(key)
-            return proc.process(outputs, labels, batch)
+            processed_predictions, processed_labels_for_em = proc.process(outputs, labels, batch)
+            return processed_predictions, processed_labels_for_em
         except Exception as err:
-            self.logger.error(f"Post-processing with key '{key}' failed: {err}. Falling back to DefaultPostProcessor.", exc_info=True)
-            return DefaultPostProcessor().process(outputs, labels, batch)
+            self.logger.error(f"Post-processing for exact_match with key '{key}' failed: {err}. Using raw outputs/labels.", exc_info=True)
+            return outputs, [str(l) for l in labels]
 
 class SummarizationTaskHandler(TaskHandler):
     """
