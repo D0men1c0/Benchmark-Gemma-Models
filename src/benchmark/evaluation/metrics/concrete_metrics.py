@@ -295,76 +295,93 @@ class ROUGEScoreMetric(BaseMetric):
 
     def result(self) -> Dict[str, float]:
         """ Computes and returns the ROUGE score. """
+        default_metrics_config = self._options.get("metrics", ['rouge-l'])
+        default_stats_config = self._options.get("stats", ['f'])
+        default_empty_or_error_result = {}
+        for m_conf in default_metrics_config:
+            for s_conf in default_stats_config:
+                default_empty_or_error_result[f"{m_conf}_{s_conf}"] = 0.0
+        if not default_empty_or_error_result:
+            default_empty_or_error_result = {"rouge-l_f": 0.0}
+
         if not self._collected_predictions or not self._collected_labels:
-            # Return a default structure based on common expectations or configured metrics
-            default_metrics = self._options.get("metrics", ['rouge-l'])
-            default_stats = self._options.get("stats", ['f'])
-            default_result = {}
-            for m in default_metrics:
-                for s in default_stats:
-                    default_result[f"{m}_{s}"] = 0.0
-            return default_result if default_result else {"rouge-l_f": 0.0}
+            logger.warning("ROUGE: No predictions or labels collected.")
+            return default_empty_or_error_result
 
+        valid_hyps = []
+        valid_refs = []
 
-        # Filter out empty strings which can cause issues with some ROUGE implementations
-        # or lead to ZeroDivisionError if all are empty.
-        valid_predictions = [p for p in self._collected_predictions if p.strip()]
-        valid_labels = [l for l in self._collected_labels if l.strip()]
+        for pred, ref in zip(self._collected_predictions, self._collected_labels):
+            str_pred = str(pred).strip()
+            str_ref = str(ref).strip()
+            
+            if str_pred and str_ref:
+                valid_hyps.append(str_pred)
+                valid_refs.append(str_ref)
+            elif not str_pred and str_ref:
+                logger.debug(f"ROUGE: Empty hypothesis for non-empty reference. This pair will effectively score 0 for ROUGE. Ref: '{str_ref[:50]}...'")
 
-        if not valid_predictions or not valid_labels:
-            logger.warning("ROUGE: All predictions or labels are empty after stripping. Returning 0.0 for scores.")
-            return {k: 0.0 for k in self._options.get("metrics", ['rouge-l'])} # Return 0 for configured metrics
-
-        metrics_to_compute = self._options.get("metrics", ['rouge-l']) # e.g., ['rouge1', 'rouge2', 'rougeL']
-        stats_to_return = self._options.get("stats", ['f'])       # e.g., ['f', 'p', 'r']
+        if not valid_hyps:
+            logger.warning("ROUGE: No valid (non-empty pairs of) predictions/references found after filtering. Returning 0.0 for scores.")
+            return default_empty_or_error_result
+        
+        metrics_to_compute = self._options.get("metrics", ['rouge-l'])
+        stats_to_return = self._options.get("stats", ['f'])
         
         try:
-            scores_list = self._rouge_calculator.get_scores(valid_predictions, valid_labels, avg=False)
+            scores_list_per_sentence = self._rouge_calculator.get_scores(valid_hyps, valid_refs, avg=False)
             
+            num_valid_samples = len(scores_list_per_sentence)
+            if num_valid_samples == 0:
+                 return default_empty_or_error_result
+
             aggregated_scores: Dict[str, Dict[str, float]] = {}
-            num_samples = len(scores_list)
+            if scores_list_per_sentence:
+                sample_score_item = scores_list_per_sentence[0]
+                for rouge_type_key_from_lib in sample_score_item:
+                    aggregated_scores[rouge_type_key_from_lib] = {stat_key: 0.0 for stat_key in sample_score_item[rouge_type_key_from_lib]}
 
-            if num_samples == 0: # Should be caught by valid_predictions/labels check, but good to have
-                 return {"rouge_error_no_samples": 1.0}
-
-            for score_item in scores_list: # score_item is for one pred/ref pair
-                for rouge_type_key, stat_values in score_item.items(): # e.g., rouge_type_key='rouge-1', stat_values={'f': ..., 'p': ..., 'r': ...}
-                    if rouge_type_key not in aggregated_scores:
-                        aggregated_scores[rouge_type_key] = {stat: 0.0 for stat in stat_values}
-                    for stat_key, value in stat_values.items():
-                        aggregated_scores[rouge_type_key][stat_key] += value
+            for score_item_dict in scores_list_per_sentence:
+                for rouge_type_key_from_lib, stat_values_dict in score_item_dict.items():
+                    if rouge_type_key_from_lib in aggregated_scores:
+                        for stat_key, value in stat_values_dict.items():
+                            if stat_key in aggregated_scores[rouge_type_key_from_lib]:
+                                aggregated_scores[rouge_type_key_from_lib][stat_key] += value
+                            else:
+                                logger.warning(f"ROUGE: Unexpected stat '{stat_key}' from library for {rouge_type_key_from_lib}.")
+                    else:
+                         logger.warning(f"ROUGE: Unexpected rouge type '{rouge_type_key_from_lib}' from library.")
             
-            # Average the aggregated scores
             averaged_scores_final: Dict[str, Dict[str, float]] = {}
-            for rouge_type_key, total_stats in aggregated_scores.items():
-                averaged_scores_final[rouge_type_key] = {
-                    stat_key: value / num_samples for stat_key, value in total_stats.items()
+            for rouge_type_key_from_lib, total_stats_dict in aggregated_scores.items():
+                averaged_scores_final[rouge_type_key_from_lib] = {
+                    stat_key: value / num_valid_samples for stat_key, value in total_stats_dict.items()
                 }
 
-            final_results = {}
-            for r_metric_config in metrics_to_compute: # e.g., 'rouge1', 'rougeL' from config
-                lib_metric_key = self._get_rouge_lib_key(r_metric_config) # e.g., 'rouge-1', 'rouge-l'
+            final_results_to_report = {}
+            for r_metric_config_key in metrics_to_compute:
+                lib_metric_key = self._get_rouge_lib_key(r_metric_config_key) 
                 
                 if lib_metric_key in averaged_scores_final:
-                    for stat_config in stats_to_return: # e.g., 'f', 'p', 'r' from config
-                        if stat_config in averaged_scores_final[lib_metric_key]:
-                            final_results[f"{r_metric_config}_{stat_config}"] = averaged_scores_final[lib_metric_key][stat_config]
+                    for stat_config_key in stats_to_return:
+                        if stat_config_key in averaged_scores_final[lib_metric_key]:
+                            final_results_to_report[f"{r_metric_config_key}_{stat_config_key}"] = averaged_scores_final[lib_metric_key][stat_config_key]
                         else:
-                            logger.warning(f"ROUGE: Stat '{stat_config}' not found for metric '{lib_metric_key}'. Available: {averaged_scores_final[lib_metric_key].keys()}")
-                            final_results[f"{r_metric_config}_{stat_config}"] = 0.0 # Default if stat not found
-
-                # Handle rougeLsum as potentially equivalent to rouge-l if library doesn't distinguish
-                elif r_metric_config.lower() == 'rougelsum' and 'rouge-l' in averaged_scores_final:
+                            logger.warning(f"ROUGE: Configured stat '{stat_config_key}' not found for metric '{lib_metric_key}'. Available stats: {averaged_scores_final[lib_metric_key].keys()}")
+                            final_results_to_report[f"{r_metric_config_key}_{stat_config_key}"] = 0.0
+                elif r_metric_config_key.lower() == 'rougelsum' and 'rouge-l' in averaged_scores_final:
                     self.logger.debug("ROUGE: Treating 'rougeLsum' as 'rouge-l'.")
-                    for stat_config in stats_to_return:
-                        if stat_config in averaged_scores_final['rouge-l']:
-                             final_results[f"rougeLsum_{stat_config}"] = averaged_scores_final['rouge-l'][stat_config]
+                    for stat_config_key in stats_to_return:
+                        if stat_config_key in averaged_scores_final['rouge-l']:
+                             final_results_to_report[f"rougeLsum_{stat_config_key}"] = averaged_scores_final['rouge-l'][stat_config_key]
+                        else:
+                             final_results_to_report[f"rougeLsum_{stat_config_key}"] = 0.0
                 else:
-                    logger.warning(f"ROUGE: Metric key '{lib_metric_key}' (from config '{r_metric_config}') not found in calculated scores. Available ROUGE types: {averaged_scores_final.keys()}")
-                    for stat_config in stats_to_return:
-                        final_results[f"{r_metric_config}_{stat_config}"] = 0.0 # Default if metric type not found
-
-            return final_results if final_results else {"rouge_calculation_issue": 1.0} # Fallback if loop yields nothing
+                    logger.warning(f"ROUGE: Metric key '{lib_metric_key}' (from config key '{r_metric_config_key}') not found in calculated averaged scores. Available ROUGE types: {averaged_scores_final.keys()}")
+                    for stat_config_key in stats_to_return:
+                        final_results_to_report[f"{r_metric_config_key}_{stat_config_key}"] = 0.0
+            
+            return final_results_to_report if final_results_to_report else default_empty_or_error_result
 
         except Exception as e:
             logger.error(f"Error computing ROUGE score: {e}", exc_info=True)
@@ -484,57 +501,91 @@ class ItemScoringAverageMetric(BaseMetric):
 class METEORScoreMetric(ListAccumulatingMetric):
     """ Computes METEOR score using NLTK's meteor_score function. """
 
-    def result(self) -> float:
-        """ Computes and returns the METEOR score. """
-        if not self._collected_predictions or not self._collected_labels:
-            return 0.0
-        
-        # NLTK resource download handling
+    def __init__(self):
+        super().__init__()
+        # Flag to ensure NLTK resources are checked/downloaded only once per instance
+        self._nltk_resources_ensured: bool = False
+
+    def _ensure_nltk_resources(self) -> bool:
+        """
+        Checks for necessary NLTK resources and downloads them if missing.
+        Returns True if all resources are available or successfully downloaded, False otherwise.
+        """
+        if self._nltk_resources_ensured:
+            return True
+
         required_resources = [
             ('corpora/wordnet', 'wordnet'),
-            ('corpora/omw-1.4', 'omw-1.4'), # Open Multilingual Wordnet, often needed
-            ('tokenizers/punkt', 'punkt')    # Punkt for tokenization if not already present
+            ('corpora/omw-1.4', 'omw-1.4'), # Open Multilingual Wordnet
+            ('tokenizers/punkt', 'punkt')    # For tokenization by METEOR
         ]
         
-        resources_downloaded_successfully = True
+        all_resources_ready = True
         for resource_path, resource_name in required_resources:
             try:
                 nltk.data.find(resource_path)
             except LookupError:
-                logger.info(f"NLTK resource '{resource_name}' not found. Attempting download...")
+                logger.info(f"NLTK resource '{resource_name}' for METEOR not found. Attempting download...")
                 try:
                     nltk.download(resource_name, quiet=True)
                     logger.info(f"NLTK resource '{resource_name}' downloaded successfully.")
                 except Exception as e:
-                    logger.error(f"Failed to download NLTK resource '{resource_name}': {e}. METEOR score might be 0.0 or inaccurate.")
-                    resources_downloaded_successfully = False
-            except Exception as e:
-                logger.error(f"Unexpected error checking NLTK resource '{resource_name}': {e}. METEOR score might be 0.0 or inaccurate.")
-                resources_downloaded_successfully = False
+                    logger.error(f"Failed to download NLTK resource '{resource_name}': {e}. METEOR may be inaccurate.")
+                    all_resources_ready = False # Mark as failure for this resource
+            except Exception as e: # Catch any other errors during nltk.data.find
+                logger.error(f"Unexpected error checking for NLTK resource '{resource_name}': {e}. METEOR may be inaccurate.")
+                all_resources_ready = False
         
-        if not resources_downloaded_successfully:
+        if all_resources_ready:
+            self._nltk_resources_ensured = True
+        return all_resources_ready
+
+    def result(self) -> float:
+        """ Computes and returns the average METEOR score. """
+        if not self._ensure_nltk_resources():
+            logger.warning("METEOR score calculation skipped due to missing NLTK resources.")
             return 0.0
 
-        # METEOR expects tokenized strings.
-        tokenized_predictions = [str(p).split() for p in self._collected_predictions]
-        tokenized_labels_meteor = [[str(l).split()] for l in self._collected_labels] # References as list of lists of tokens
+        if not self._collected_predictions or not self._collected_labels:
+            logger.warning("METEOR: No predictions or labels collected to compute score.")
+            return 0.0
+        
+        # Ensure all predictions and labels are strings before splitting
+        try:
+            tokenized_predictions = [str(p).split() for p in self._collected_predictions]
+            # METEOR expects references as a list of lists of tokens (even for a single reference per hypothesis)
+            tokenized_labels_meteor = [[str(l).split()] for l in self._collected_labels]
+        except Exception as e:
+            logger.error(f"METEOR: Error during tokenization of predictions/labels: {e}")
+            return 0.0
 
-        alpha = self._options.get("alpha", 0.9)
+        alpha = self._options.get("alpha", 0.9)  # Default NLTK METEOR parameters
         beta = self._options.get("beta", 3.0)
         gamma = self._options.get("gamma", 0.5)
         
-        if not tokenized_predictions: return 0.0
+        if not tokenized_predictions: # Should be caught by earlier check, but defensive
+            return 0.0
         
         scores = []
-        for hyp_tokens, refs_tokens_list_for_one_hyp in zip(tokenized_predictions, tokenized_labels_meteor):
+        for hyp_tokens, refs_list_for_hyp in zip(tokenized_predictions, tokenized_labels_meteor):
+            if not hyp_tokens and not any(refs_list_for_hyp): # Both empty or only ref list is empty of tokens
+                 scores.append(0.0) # Define behavior for empty strings: score 0
+                 continue
+            if not hyp_tokens and any(ref_tok_list for ref_tok_list in refs_list_for_hyp if ref_tok_list): # Hyp empty, ref not
+                 scores.append(0.0) # Hyp empty, ref not empty -> 0 score
+                 continue
+
             try:
-                score = nltk_meteor_score(references=refs_tokens_list_for_one_hyp, hypothesis=hyp_tokens,
+                # nltk_meteor_score expects references first, then hypothesis
+                score = nltk_meteor_score(references=refs_list_for_hyp, 
+                                          hypothesis=hyp_tokens,
                                           alpha=alpha, beta=beta, gamma=gamma)
                 scores.append(score)
             except Exception as e:
-                logger.warning(f"Error calculating METEOR for one sentence pair: {e}")
+                logger.warning(f"Error calculating METEOR for one sentence pair (hyp: '{' '.join(hyp_tokens)[:30]}...'): {e}")
+                # Optionally append a 0 or skip, depending on desired error handling for individual pairs
         
-        return np.mean(scores) if scores else 0.0
+        return np.mean(scores).item() if scores else 0.0
 
 
 class JaccardSimilarityMetric(ItemScoringAverageMetric):
