@@ -185,13 +185,60 @@ models:
     checkpoint: "gpt2"
     quantization: null # No quantization for gpt2, it's small
     offloading: false
-  # - name: "phi-2" # Alternative 2.7B parameter model (not Llama architecture)
-  #   variant: "phi"
-  #   size: "2.7B"
-  #   framework: "huggingface"
-  #   checkpoint: "microsoft/phi-2"
-  #   quantization: "4bit" # or null if you have enough VRAM
-  #   offloading: true
+
+  - name: "phi-2" # Alternative 2.7B parameter model (not Llama architecture)
+    variant: "phi"
+    size: "2.7B"
+    framework: "huggingface"
+    checkpoint: "microsoft/phi-2"
+    quantization: "4bit" # or null if you have enough VRAM
+    offloading: true
+
+  - name: "llama2-7b"
+    variant: "llama"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "meta-llama/Llama-2-7b-hf"
+    quantization: "4bit"
+    offloading: true
+    torch_dtype: "bfloat16"
+
+  - name: "llama3-8b"
+    variant: "llama3"
+    size: "8B"
+    framework: "huggingface"
+    checkpoint: "meta-llama/Meta-Llama-3-8B"
+    quantization: "4bit"
+    offloading: true
+    torch_dtype: "bfloat16"
+
+  - name: "mistral-7b"
+    variant: "mistral"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "mistralai/Mistral-7B-v0.1"
+    quantization: "4bit"
+    offloading: true
+    torch_dtype: "bfloat16"
+
+  - name: "llama3-8b 8quant"
+    variant: "llama3"
+    size: "8B"
+    framework: "huggingface"
+    checkpoint: "meta-llama/Meta-Llama-3-8B"
+    quantization: "8bit"
+    offloading: true
+    torch_dtype: "float16"
+
+  - name: "mistral-7b 8quant"
+    variant: "mistral"
+    size: "7B"
+    framework: "huggingface"
+    checkpoint: "mistralai/Mistral-7B-v0.1"
+    quantization: "8bit"
+    offloading: true
+    torch_dtype: "float16"
+
 
 # ============================
 # Model Parameters Configuration (Global for model loading, not generation)
