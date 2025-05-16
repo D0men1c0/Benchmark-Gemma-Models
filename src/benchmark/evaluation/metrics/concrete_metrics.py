@@ -6,6 +6,7 @@ import nltk
 from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
 from nltk.translate.meteor_score import meteor_score as nltk_meteor_score
 from rouge import Rouge
+import torch
 import bert_score
 from collections import Counter
 import math
@@ -370,7 +371,7 @@ class ROUGEScoreMetric(BaseMetric):
                             logger.warning(f"ROUGE: Configured stat '{stat_config_key}' not found for metric '{lib_metric_key}'. Available stats: {averaged_scores_final[lib_metric_key].keys()}")
                             final_results_to_report[f"{r_metric_config_key}_{stat_config_key}"] = 0.0
                 elif r_metric_config_key.lower() == 'rougelsum' and 'rouge-l' in averaged_scores_final:
-                    self.logger.debug("ROUGE: Treating 'rougeLsum' as 'rouge-l'.")
+                    logger.debug("ROUGE: Treating 'rougeLsum' as 'rouge-l'.")
                     for stat_config_key in stats_to_return:
                         if stat_config_key in averaged_scores_final['rouge-l']:
                              final_results_to_report[f"rougeLsum_{stat_config_key}"] = averaged_scores_final['rouge-l'][stat_config_key]
@@ -643,7 +644,7 @@ class SemanticSimilarityMetric(ItemScoringAverageMetric):
             self._model_name = model_name_option
             try:
                 from sentence_transformers import SentenceTransformer
-                self.logger.info(f"Initializing SentenceTransformer model: {self._model_name}")
+                logger.info(f"Initializing SentenceTransformer model: {self._model_name}")
                 self._model = SentenceTransformer(self._model_name)
             except ImportError:
                 logger.error("sentence_transformers library not found. SemanticSimilarityMetric will not work.")
