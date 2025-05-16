@@ -1,0 +1,42 @@
+{
+    "gemma-2b": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.3,
+            "accuracy": 0.3,
+            "f1_score": 0.20606060606060606,
+            "precision": 0.24444444444444446,
+            "recall": 0.3,
+            "rouge": {
+                "rouge-l_f": 0.29999999850000003
+            },
+            "bleu": 0.023403473193207163,
+            "meteor": 0.15,
+            "bert_score": {
+                "bertscore_precision": 0.9995068311691284,
+                "bertscore_recall": 0.9995068311691284,
+                "bertscore_f1": 0.9995068311691284
+            },
+            "spearman_correlation": 0.0
+        }
+    },
+    "gpt2": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.2,
+            "accuracy": 0.2,
+            "f1_score": 0.06666666666666667,
+            "precision": 0.04,
+            "recall": 0.2,
+            "rouge": {
+                "rouge-l_f": 0.199999999
+            },
+            "bleu": 0.02114742526881129,
+            "meteor": 0.1,
+            "bert_score": {
+                "bertscore_precision": 0.9980226755142212,
+                "bertscore_recall": 0.9980226755142212,
+                "bertscore_f1": 0.9980226755142212
+            },
+            "spearman_correlation": 0.0
+        }
+    }
+}
