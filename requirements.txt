@@ -24,9 +24,9 @@ py-cpuinfo==9.0.0
 fpdf==1.7.2
 pyyaml==6.0.2
 jsonlines==4.0.0
-torch==2.5.1+cu121
-torchaudio==2.5.1+cu121
-torchvision==0.20.1+cu121
+#torch==2.5.1+cu121
+#torchaudio==2.5.1+cu121
+#torchvision==0.20.1+cu121
 sentence_transformers==4.0.1
 sequeseqeval==1.2.2
 bert-score==0.3.10
