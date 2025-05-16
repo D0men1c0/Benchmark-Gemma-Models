@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset, IterableDataset
 import gc
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent)) 
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config_models import BenchmarkConfig, TaskConfig, ModelConfig
 from .dataset.dataset_factory import DatasetFactory
 from .evaluation.evaluator import Evaluator
