@@ -1,5 +1,5 @@
 {
-    "phi-2": {
+    "phi-2 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.35,
             "accuracy": 0.35,
@@ -20,18 +20,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.32164485504262
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.846997082233429,
+                "bertscore_recall": 0.8588759899139404,
+                "bertscore_f1": 0.8527663946151733
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.1614209088148973,
+                "distinct_2": 0.48900930375217255
             },
-            "word_entropy": -0.0
+            "word_entropy": 8.411591340805948
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -63,7 +63,7 @@
             }
         }
     },
-    "gemma-7b": {
+    "gemma-7b 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.3,
             "accuracy": 0.3,
@@ -84,18 +84,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.2574007699708847
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.8313127756118774,
+                "bertscore_recall": 0.8207830190658569,
+                "bertscore_f1": 0.8256691098213196
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.17293571107447925,
+                "distinct_2": 0.4784725391754146
             },
-            "word_entropy": -0.0
+            "word_entropy": 8.337972950489002
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -127,7 +127,7 @@
             }
         }
     },
-    "gemma-2b": {
+    "gemma-2b 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.3,
             "accuracy": 0.3,
@@ -148,18 +148,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.2713514685376797
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.8292446136474609,
+                "bertscore_recall": 0.8064431548118591,
+                "bertscore_f1": 0.8173209428787231
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.14599555061179087,
+                "distinct_2": 0.41040462427745666
             },
-            "word_entropy": -0.0
+            "word_entropy": 8.29855455391824
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -191,7 +191,7 @@
             }
         }
     },
-    "gpt2": {
+    "gpt2 full prec": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.15,
             "accuracy": 0.15,
@@ -212,18 +212,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.236867873806351
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.8105890154838562,
+                "bertscore_recall": 0.7924384474754333,
+                "bertscore_f1": 0.8010550141334534
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.11744437881472732,
+                "distinct_2": 0.28912308610061643
             },
-            "word_entropy": -0.0
+            "word_entropy": 8.498043190175013
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -255,7 +255,7 @@
             }
         }
     },
-    "llama2-7b": {
+    "llama2-7b 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.3,
             "accuracy": 0.3,
@@ -276,18 +276,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.14801744517767754
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.7753854990005493,
+                "bertscore_recall": 0.7866823673248291,
+                "bertscore_f1": 0.7806887626647949
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.12642300778909527,
+                "distinct_2": 0.284823600973236
             },
-            "word_entropy": -0.0
+            "word_entropy": 7.813188946509276
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -319,7 +319,7 @@
             }
         }
     },
-    "llama3-8b": {
+    "llama3-8b 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.2,
             "accuracy": 0.2,
@@ -340,18 +340,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.298510772125836
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.8520187139511108,
+                "bertscore_recall": 0.8189324140548706,
+                "bertscore_f1": 0.8349900245666504
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.22481071636575423,
+                "distinct_2": 0.4725987035945787
             },
-            "word_entropy": -0.0
+            "word_entropy": 7.721932253165296
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -383,7 +383,7 @@
             }
         }
     },
-    "mistral-7b": {
+    "mistral-7b 4quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.35,
             "accuracy": 0.35,
@@ -404,18 +404,18 @@
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge-l_f": 0.0
+                "rouge-l_f": 0.14660713162258857
             },
             "bert_score": {
-                "bertscore_precision": 0.7588976621627808,
-                "bertscore_recall": 0.8354942202568054,
-                "bertscore_f1": 0.7952355146408081
+                "bertscore_precision": 0.8108065724372864,
+                "bertscore_recall": 0.776399552822113,
+                "bertscore_f1": 0.7931827306747437
             },
             "distinct_ngram": {
-                "distinct_1": 0.05,
-                "distinct_2": 0.0
+                "distinct_1": 0.1813349084465446,
+                "distinct_2": 0.3574417214584579
             },
-            "word_entropy": -0.0
+            "word_entropy": 6.695772919104128
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
@@ -444,6 +444,134 @@
                 "bertscore_precision": 0.7884746193885803,
                 "bertscore_recall": 0.79076087474823,
                 "bertscore_f1": 0.7891631722450256
+            }
+        }
+    },
+    "llama3-8b 8quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.4,
+            "accuracy": 0.4,
+            "f1_score": 0.37110667110667106,
+            "precision": 0.6,
+            "recall": 0.4,
+            "rouge": {
+                "rouge-l_f": 0.3999999979999999
+            },
+            "bleu": 0.014953487812212209,
+            "meteor": 0.2,
+            "bert_score": {
+                "bertscore_precision": 0.999029815196991,
+                "bertscore_recall": 0.999029815196991,
+                "bertscore_f1": 0.999029815196991
+            }
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge-l_f": 0.31753775054207345
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8503223657608032,
+                "bertscore_recall": 0.8284755945205688,
+                "bertscore_f1": 0.8391711115837097
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.26032225579053375,
+                "distinct_2": 0.5269582909460834
+            },
+            "word_entropy": 8.074189071713144
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge-l_f": 0.2076380593656107
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8336120843887329,
+                "bertscore_recall": 0.8552668690681458,
+                "bertscore_f1": 0.8439306020736694
+            },
+            "meteor": 0.2021317998555993,
+            "bleu": 0.02496216026940025,
+            "distinct_ngram": {
+                "distinct_1": 0.39355812783090083,
+                "distinct_2": 0.71021860701576
+            },
+            "word_entropy": 8.24234403686882
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.005957175859971868,
+            "meteor": 0.03437343090470354,
+            "rouge": {
+                "rouge_exception": 1.0
+            },
+            "bert_score": {
+                "bertscore_precision": 0.6995024681091309,
+                "bertscore_recall": 0.6964496374130249,
+                "bertscore_f1": 0.6975432634353638
+            }
+        }
+    },
+    "mistral-7b 8quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.4,
+            "accuracy": 0.4,
+            "f1_score": 0.404040404040404,
+            "precision": 0.4925,
+            "recall": 0.4,
+            "rouge": {
+                "rouge-l_f": 0.3999999979999999
+            },
+            "bleu": 0.014953487812212209,
+            "meteor": 0.2,
+            "bert_score": {
+                "bertscore_precision": 0.999029815196991,
+                "bertscore_recall": 0.999029815196991,
+                "bertscore_f1": 0.999029815196991
+            }
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge-l_f": 0.23594096889173044
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8219372034072876,
+                "bertscore_recall": 0.7965803742408752,
+                "bertscore_f1": 0.8088981509208679
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.2640283520378027,
+                "distinct_2": 0.5517035265989241
+            },
+            "word_entropy": 7.686336532651579
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge-l_f": 0.19128535997589313
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8171979784965515,
+                "bertscore_recall": 0.8500066995620728,
+                "bertscore_f1": 0.8331978917121887
+            },
+            "meteor": 0.19608734703607633,
+            "bleu": 0.022783607411769616,
+            "distinct_ngram": {
+                "distinct_1": 0.3423288355822089,
+                "distinct_2": 0.6007067137809188
+            },
+            "word_entropy": 7.672984067597462
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.01313997929210553,
+            "meteor": 0.08703678581367738,
+            "rouge": {
+                "rouge-l_f": 0.12129790957765832
+            },
+            "bert_score": {
+                "bertscore_precision": 0.7906845211982727,
+                "bertscore_recall": 0.7906746864318848,
+                "bertscore_f1": 0.7903044819831848
             }
         }
     }
