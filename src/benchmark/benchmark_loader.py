@@ -172,28 +172,34 @@ class BenchmarkRunner:
         for batch in data_loader:  # data_loader is expected to be iterable (e.g., DataLoader or tqdm(DataLoader))
             batch_num += 1
             try:
-                predictions_batch, labels_batch = handler.process_batch(batch)
+                processed_outputs_from_handler = handler.process_batch(batch)
+                # processed_outputs_from_handler should be a tuple (predictions, labels) or a dict
+                if isinstance(processed_outputs_from_handler, dict) and "text_predictions" in processed_outputs_from_handler : # È l'output di GSM8K
+                    # Assuming the handler returns a dict with keys "text_predictions" and "labels_for_text"
+                    evaluator.update_batch_metrics(processed_outputs_from_handler, task_name=task_name) # Passa anche task_name
+                elif isinstance(processed_outputs_from_handler, tuple) and len(processed_outputs_from_handler) == 2:
+                    # Assuming the handler returns a tuple (predictions, labels)
+                    predictions_batch, labels_batch = processed_outputs_from_handler
+                    if predictions_batch is not None and not isinstance(predictions_batch, list):
+                        predictions_batch = [predictions_batch] 
+                    if labels_batch is not None and not isinstance(labels_batch, list):
+                        labels_batch = [labels_batch]
 
-                # Ensure predictions and labels are lists for consistent processing
-                if predictions_batch is not None and not isinstance(predictions_batch, list):
-                    predictions_batch = [predictions_batch]
-                if labels_batch is not None and not isinstance(labels_batch, list):
-                    labels_batch = [labels_batch]
-                
-                if predictions_batch is not None and labels_batch is not None:
-                    if len(predictions_batch) != len(labels_batch):
-                        self.logger.warning(
-                            f"Batch {batch_num} for task '{task_name}': predictions ({len(predictions_batch)}) "
-                            f"and labels ({len(labels_batch)}) length mismatch. Skipping batch for evaluation."
+                    if predictions_batch is not None and labels_batch is not None:
+                        if len(predictions_batch) == len(labels_batch):
+                            evaluator.update_batch_metrics((predictions_batch, labels_batch), task_name=task_name) # Passa come tupla
+                        else:
+                            self.logger.warning(
+                                f"Batch {batch_num} for task '{task_name}': predictions ({len(predictions_batch)}) "
+                                f"and labels ({len(labels_batch)}) length mismatch. Skipping batch for evaluation."
+                            )
+                    elif predictions_batch is None or labels_batch is None:
+                         self.logger.warning(
+                            f"Batch {batch_num} for task '{task_name}' produced None for predictions or labels. "
+                            f"Skipping metric update for this batch."
                         )
-                        # Continue to the next batch, but intermediate logging might still occur if interval is met
-                    else:
-                        evaluator.update_batch_metrics(predictions_batch, labels_batch)
-                elif predictions_batch is None or labels_batch is None:
-                    self.logger.warning(
-                        f"Batch {batch_num} for task '{task_name}' produced None for predictions or labels. "
-                        f"Skipping metric update for this batch."
-                    )
+                else:
+                    self.logger.error(f"Task '{task_name}' handler returned unexpected output type: {type(processed_outputs_from_handler)}")
 
                 # Log intermediate metrics
                 if log_interval_to_use > 0 and batch_num % log_interval_to_use == 0:

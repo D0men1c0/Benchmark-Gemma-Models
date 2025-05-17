@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from benchmark.evaluation.metrics.base_metrics import BaseMetric
 from .metrics.metric_factory import MetricFactory
 from utils.logger import setup_logger
@@ -23,7 +23,16 @@ class Evaluator:
             metric_name = metric_conf["name"]
             try:
                 metric_instance = MetricFactory.get_metric(metric_name)
-                metric_instance.reset_state() # Ensure it's clean
+                metric_instance.reset_state()
+                current_metric_options = metric_conf.get("options")
+
+                if current_metric_options is not None and isinstance(current_metric_options, dict):
+                    metric_instance.set_options(**current_metric_options)
+                    self.logger.debug(f"Metric '{metric_name}': Successfully set options to {current_metric_options}")
+                else:
+                    metric_instance.set_options()
+                    self.logger.debug(f"Metric '{metric_name}': No specific options found in config, "
+                                      f"metric will use its default options or an empty options set.")
                 self._metrics_instances[metric_name] = metric_instance
                 self.logger.debug(f"Metric '{metric_name}' initialized and reset.")
             except Exception as e:
@@ -31,22 +40,64 @@ class Evaluator:
                 # Decide if this should raise an error or just skip the metric
                 # For now, it will be missing from _metrics_instances
 
-    def update_batch_metrics(self, batch_predictions: List[Any], batch_labels: List[Any]):
+    def update_batch_metrics(self, batch_outputs: Dict[str, List[Any]], task_name: Optional[str] = None):
         """
         Update all prepared metrics with a new batch of predictions and labels.
-        :param batch_predictions: Predictions for the current batch.
-        :param batch_labels: Labels for the current batch.
+        batch_outputs can now be a dictionary for tasks like GSM8K.
+        :param batch_outputs: Dictionary containing predictions and labels.
+        :param task_name: Optional task name for specific handling.
         """
-        if not batch_predictions or not batch_labels:
-            self.logger.warning("Empty predictions or labels passed to update_batch_metrics. Skipping update.")
+        default_predictions = batch_outputs 
+        default_labels = []
+
+        if isinstance(batch_outputs, dict) and "labels_for_text" in batch_outputs:
+            pass
+        elif isinstance(batch_outputs, tuple) and len(batch_outputs) == 2:
+            default_predictions = batch_outputs[0]
+            default_labels = batch_outputs[1]
+        elif isinstance(batch_outputs, list):
+            self.logger.error("Evaluator.update_batch_metrics received only a list (predictions) but also needs labels.")
+            return
+        else:
+            self.logger.error(f"Evaluator.update_batch_metrics received unexpected batch_outputs type: {type(batch_outputs)}")
             return
 
+
         for metric_name, metric_instance in self._metrics_instances.items():
+            current_predictions = None
+            current_labels = None
+
+            if isinstance(batch_outputs, dict) and task_name and "GSM8K" in task_name:
+                if metric_name == "exact_match":
+                    current_predictions = batch_outputs.get("exact_match_predictions")
+                    current_labels = batch_outputs.get("labels_for_exact_match")
+                else:
+                    current_predictions = batch_outputs.get("text_predictions")
+                    current_labels = batch_outputs.get("labels_for_text")
+            else:
+                if not default_labels and not isinstance(default_predictions, dict):
+                    self.logger.warning(f"Metric '{metric_name}': Default labels are missing for non-dict batch_outputs. Skipping update.")
+                    continue
+
+                current_predictions = default_predictions
+                current_labels = default_labels
+
+            if current_predictions is None or current_labels is None:
+                self.logger.warning(
+                    f"Metric '{metric_name}': Predictions or labels are missing for task '{task_name}'. Skipping update."
+                )
+                continue
+            
+            if not isinstance(current_predictions, list) or not isinstance(current_labels, list):
+                self.logger.warning(
+                    f"Metric '{metric_name}': Predictions or labels are not lists for task '{task_name}'. Skipping update."
+                )
+                continue
+
             try:
-                metric_instance.update_state(batch_predictions, batch_labels)
+                metric_instance.update_state(current_predictions, current_labels)
             except Exception as e:
-                self.logger.error(f"Error updating metric {metric_name} for batch: {str(e)}", exc_info=True)
-                # Optionally remove the metric or mark as failed
+                self.logger.error(f"Error updating metric {metric_name} for batch: {str(e)} (Task: {task_name})", exc_info=True)
 
 
     def finalize_results(self) -> Dict[str, Any]:

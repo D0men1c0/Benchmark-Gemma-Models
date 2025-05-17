@@ -19,7 +19,7 @@ tasks:
         source_type: "hf_hub"
         config: "all" # Using all MMLU subjects
         split: "validation"
-        max_samples: 100 # Limit to 100 samples for testing
+        max_samples: 10 # Limit to 10 samples for testing
     handler_options:
       prompt_builder_type: "mmlu" # Uses MMLUPromptBuilder
       prompt_template: |
@@ -61,7 +61,7 @@ tasks:
         source_type: "hf_hub"
         config: "main"
         split: "test"
-        max_samples: 100
+        max_samples: 10
     handler_options:
       prompt_builder_type: "default"
       prompt_template: "Solve the following math problem step-by-step. Your final answer should be a number, formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
@@ -95,7 +95,7 @@ tasks:
         source_type: "hf_hub"
         config: "3.0.0"
         split: "test"
-        max_samples: 100
+        max_samples: 10
     handler_options:
       prompt_builder_type: "default"
       prompt_template: "Summarize the following article in a few sentences:\n\nArticle: {article_text}\n\nSummary:"
@@ -115,12 +115,8 @@ tasks:
         options: { ngrams: [1, 2, 3, 4] } # Can check up to 4-grams
       - name: word_entropy # Entropy of the summary
         options: {}
-      # Perplexity of the generated summary
-      # - name: perplexity
-      #   options: {}
-      # Semantic Similarity can be an alternative or complement to BERTScore
-      # - name: semantic_similarity 
-      #   options: { model: 'all-MiniLM-L6-v2', metric_type: "cosine" } # metric_type was a previous suggestion
+      - name: semantic_similarity 
+        options: { model: 'all-MiniLM-L6-v2', metric_type: "cosine" } # metric_type was a previous suggestion
 
   # --- Task 4: Translation (OPUS-100 English to French) ---
   - name: "OPUS-100 English-to-French"
@@ -131,7 +127,7 @@ tasks:
         source_type: "hf_hub"
         config: "en-fr" 
         split: "validation"
-        max_samples: 100
+        max_samples: 10
     handler_options:
       prompt_builder_type: "translation" 
       prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}: {input_text}"
@@ -153,8 +149,8 @@ tasks:
       # - name: perplexity
       #   options: {}
       # Semantic Similarity can also be used here
-      # - name: semantic_similarity
-      #   options: { model: 'paraphrase-multilingual-MiniLM-L12-v2', metric_type: "cosine" } # A multilingual model
+      - name: semantic_similarity
+        options: { model: 'paraphrase-multilingual-MiniLM-L12-v2', metric_type: "cosine" } # A multilingual model
 
 # ============================
 # Models Configuration
