@@ -6,19 +6,23 @@ from .concrete_task_handlers import (
     TranslationTaskHandler,
     MultipleChoiceQATaskHandler,
     MathReasoningGenerationTaskHandler,
-    TextPairClassificationTaskHandler
+    TextPairClassificationTaskHandler,
+    GlueClassificationPromptingTaskHandler,
+    GlueTextPairPromptingTaskHandler
 )
 
 class TaskHandlerFactory:
     """Factory to create appropriate task handlers based on task type."""
 
     _handlers: Dict[str, Type[TaskHandler]] = {
-        "classification": ClassificationTaskHandler,
+        "classification": ClassificationTaskHandler, # For pretrained logits models
         "summarization": SummarizationTaskHandler,
         "translation": TranslationTaskHandler,
         "multiple_choice_qa": MultipleChoiceQATaskHandler,
         "math_reasoning_generation": MathReasoningGenerationTaskHandler,
-        "text_pair_classification": TextPairClassificationTaskHandler
+        "text_pair_classification": TextPairClassificationTaskHandler, # For pretrained logits models
+        "glue_classification_prompting": GlueClassificationPromptingTaskHandler,
+        "glue_text_pair_prompting": GlueTextPairPromptingTaskHandler,
     }
 
     @classmethod

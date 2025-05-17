@@ -276,8 +276,9 @@ class BenchmarkRunner:
             current_advanced_args["dataset_name"] = first_dataset_cfg.name # e.g., "opus100", "glue"
 
         try:
+            handler_key_to_use = task_cfg.handler if task_cfg.handler else task_type
             handler = TaskHandlerFactory.get_handler(
-                task_type, 
+                handler_key_to_use, 
                 model, 
                 tokenizer, 
                 self.device, 
