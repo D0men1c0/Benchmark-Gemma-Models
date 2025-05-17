@@ -19,38 +19,29 @@ tasks:
         source_type: "hf_hub"
         config: "all" # Using all MMLU subjects
         split: "validation"
-        max_samples: 10 # Limit to 10 samples for testing
+        max_samples: 50 # Limit to 50 samples for testing
     handler_options:
       prompt_builder_type: "mmlu" # Uses MMLUPromptBuilder
       prompt_template: |
-        The following is a multiple-choice question about {subject}.
-        Please choose the letter of the correct answer.
+        Answer the following multiple-choice question about {subject} by providing only the letter of the correct option.
         Question: {question}
         Choices:
         {choices_formatted_str}
-        Answer:
+        Your answer (select one letter from A, B, C, D, etc.):
       default_subject: "the following topic"
     evaluation_metrics:
-      - name: exact_match
-        options: { normalize: true, ignore_case: true, ignore_punct: true }
-      - name: accuracy
+      # Metrics like ROUGE, BLEU, METEOR, BERTScore are generally not meaningful for single-letter classification outputs.
+      # Kept classification-style metrics.
+      - name: exact_match # Will compare the extracted letter (A,B,C,D) from model output with the label letter.
+        options: { normalize: true, ignore_case: true, ignore_punct: false } # Punct should not matter for single letters
+      - name: accuracy # Equivalent to exact_match if labels are single letters
         options: {}
-      - name: f1_score
-        options: { average: "weighted" }
+      - name: f1_score # Treating A,B,C,D... as classes
+        options: { average: "weighted" , zero_division: 0 }
       - name: precision
-        options: { average: "weighted" }
+        options: { average: "weighted" , zero_division: 0 }
       - name: recall
-        options: { average: "weighted" }
-      - name: rouge
-        options:
-          metrics: ['rouge1', 'rouge2', 'rougeL']
-          stats: ['f']                         
-      - name: bleu
-        options: {}
-      - name: meteor
-        options: {} 
-      - name: bert_score
-        options: { lang: "en" }
+        options: { average: "weighted" , zero_division: 0 }
 
   # --- Task 2: GSM8K (Reasoning Text Analysis) ---
   - name: "GSM8K (Reasoning Text Analysis)"
@@ -61,30 +52,26 @@ tasks:
         source_type: "hf_hub"
         config: "main"
         split: "test"
-        max_samples: 10
+        max_samples: 50
     handler_options:
       prompt_builder_type: "default"
-      prompt_template: "Solve the following math problem step-by-step. Your final answer should be a number, formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
-      # For evaluating the final numerical answer, you need a postprocessor that extracts it.
-      # 'gsm8k' postprocessor_key is designed for this.
+      prompt_template: "Solve the following math problem. Show your reasoning step-by-step. Conclude with the final numerical answer formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
       postprocessor_key: "gsm8k" # IMPORTANT: This extracts the final number for exact_match
     evaluation_metrics:
       - name: exact_match # Evaluates the correctness of the *extracted numerical answer*
-        options: {}      # Normalization options might be useful depending on how numbers are formatted
-      # The following metrics evaluate the properties of the *full generated reasoning text*:
+        options: {}
       - name: rouge # Compares textual similarity of the reasoning steps
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL']
-          stats: ['f', 'p', 'r'] # You can choose f, p, r or combinations
+          stats: ['f', 'p', 'r']
       - name: bert_score # Compares semantic similarity of the reasoning steps
         options: { lang: "en" }
       - name: distinct_ngram # Calculates lexical diversity in the reasoning text
         options: { ngrams: [1, 2, 3] }
       - name: word_entropy # Another measure of text diversity/predictability
         options: {}
-      # Perplexity could also be interesting for the generated reasoning steps
-      # - name: perplexity
-      #   options: {} # Requires model to output log_probs or for it to be calculated.
+      - name: toxicity # Evaluate toxicity of the generated reasoning
+        options: { target_label: "toxic" } # Options can include model, target_label, threshold
 
   # --- Task 3: Summarization (CNN/DailyMail) ---
   - name: "CNN/DailyMail Summarization"
@@ -95,28 +82,30 @@ tasks:
         source_type: "hf_hub"
         config: "3.0.0"
         split: "test"
-        max_samples: 10
+        max_samples: 50
     handler_options:
       prompt_builder_type: "default"
-      prompt_template: "Summarize the following article in a few sentences:\n\nArticle: {article_text}\n\nSummary:"
+      prompt_template: "Provide a concise, abstractive summary of the following news article. Focus on the main points and key information.\n\nArticle: {article_text}\n\nSummary:"
       postprocessor_key: "summarization" # Uses default post-processing for summaries
     evaluation_metrics:
       - name: rouge
         options:
           metrics: ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
-          stats: ['f', 'p', 'r'] # Common to report all for summarization
+          stats: ['f', 'p', 'r']
       - name: bert_score
         options: { lang: "en" }
-      - name: meteor # Often used for summarization alongside ROUGE
+      - name: meteor
         options: {}
-      - name: bleu # Less common for summarization than ROUGE/METEOR but can be included
+      - name: bleu
         options: {}
-      - name: distinct_ngram # Lexical diversity of the summary
-        options: { ngrams: [1, 2, 3, 4] } # Can check up to 4-grams
-      - name: word_entropy # Entropy of the summary
+      - name: distinct_ngram
+        options: { ngrams: [1, 2, 3, 4] }
+      - name: word_entropy
         options: {}
-      - name: semantic_similarity 
-        options: { model: 'all-MiniLM-L6-v2', metric_type: "cosine" } # metric_type was a previous suggestion
+      - name: semantic_similarity
+        options: { model: 'all-MiniLM-L6-v2', metric: "cosine" } # 'metric' was 'metric_type'
+      - name: toxicity # Evaluate toxicity of the generated summary
+        options: { target_label: "toxic" }
 
   # --- Task 4: Translation (OPUS-100 English to French) ---
   - name: "OPUS-100 English-to-French"
@@ -125,32 +114,133 @@ tasks:
     datasets:
       - name: "opus100"
         source_type: "hf_hub"
-        config: "en-fr" 
+        config: "en-fr"
         split: "validation"
-        max_samples: 10
+        max_samples: 50
     handler_options:
-      prompt_builder_type: "translation" 
-      prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}: {input_text}"
+      prompt_builder_type: "translation"
+      prompt_template: "Translate the following {source_lang_name} text into {target_lang_name}.\n\n{source_lang_name} text: \"{input_text}\"\n\n{target_lang_name} text:"
       postprocessor_key: "translation" # Uses default post-processing for translations
     evaluation_metrics:
       - name: bleu
-        options: {} # Default BLEU-4 with smoothing method1
-                     # Can add: { weights: [0.25,0.25,0.25,0.25], smoothing: "method7" } for example
+        options: {}
       - name: meteor
-        options: {} # Default METEOR
-                     # Can add: { alpha: 0.9, beta: 3.0, gamma: 0.5 }
-      - name: rouge # ROUGE can also be used for translation, though less primary than BLEU/METEOR
+        options: {}
+      - name: rouge
         options:
           metrics: ['rougeL']
           stats: ['f']
-      - name: bert_score # Semantic similarity
+      - name: bert_score
         options: { lang: "fr" } # Target language is French
-      # Perplexity of the translated text
-      # - name: perplexity
-      #   options: {}
-      # Semantic Similarity can also be used here
       - name: semantic_similarity
-        options: { model: 'paraphrase-multilingual-MiniLM-L12-v2', metric_type: "cosine" } # A multilingual model
+        options: { model: 'paraphrase-multilingual-MiniLM-L12-v2', metric: "cosine" } # 'metric' was 'metric_type'
+      - name: toxicity # Evaluate toxicity of the generated translation
+        options: { target_label: "toxic" }
+
+  # --- Task 5: GLUE SST-2 (Sentiment Classification - Prompting) ---
+  - name: "GLUE SST-2 (Prompting - Improved)"
+    type: "classification"
+    description: "GLUE SST-2 sentiment classification using improved prompting."
+    datasets:
+      - name: "glue"
+        source_type: "hf_hub"
+        config: "sst2"
+        split: "validation"
+        max_samples: 50
+    handler: "glue_classification_prompting"
+    handler_options:
+      prompt_builder_type: "glue_sst2_prompt"
+      prompt_template: | # Questo template verrà usato dal GlueSST2PromptBuilder
+        Example:
+        Review: "this movie is absolutely fantastic, a masterpiece of cinema!"
+        Sentiment (positive or negative): positive
+        ###
+        Review: "{input_text}"
+        Sentiment (positive or negative):
+      postprocessor_key: "glue_sst2_output"
+      dataset_config_name: "sst2"
+      max_new_tokens: 10
+
+    evaluation_metrics:
+      - name: "accuracy"
+        options: {}
+      - name: "f1_score"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+      - name: "precision"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+      - name: "recall"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+
+
+  # --- Task 6: GLUE MRPC (Paraphrase Detection - Prompting) ---
+  - name: "GLUE MRPC (Prompting - Improved)"
+    type: "text_pair_classification"
+    description: "GLUE MRPC paraphrase detection using improved prompting."
+    datasets:
+      - name: "glue"
+        source_type: "hf_hub"
+        config: "mrpc"
+        split: "validation"
+        max_samples: 50
+    handler: "glue_text_pair_prompting"
+    handler_options:
+      prompt_builder_type: "glue_mrpc_prompt"
+      prompt_template: |
+        Example:
+        Sentence 1: "The company chairman said he was confident that the share price would recover."
+        Sentence 2: "The chairman expressed his belief that the company's stock would bounce back."
+        Are these sentences paraphrases (yes or no)?
+        Answer: yes
+        ###
+        Sentence 1: "{input_text_pair1}"
+        Sentence 2: "{input_text_pair2}"
+        Are these sentences paraphrases (yes or no)?
+        Answer:
+      postprocessor_key: "glue_mrpc_output"
+      dataset_config_name: "mrpc"
+      max_new_tokens: 10
+
+    evaluation_metrics:
+      - name: "accuracy"
+        options: {}
+      - name: "f1_score"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+      - name: "precision"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+      - name: "recall"
+        options: { average: "binary", pos_label: 1, zero_division: 0 }
+
+  # --- Task 7: GLUE STS-B (Semantic Similarity - Prompting) ---
+  - name: "GLUE STS-B (Prompting - Improved)"
+    type: "text_pair_classification"
+    description: "GLUE STS-B semantic textual similarity using improved prompting."
+    datasets:
+      - name: "glue"
+        source_type: "hf_hub"
+        config: "stsb"
+        split: "validation"
+        max_samples: 50
+    handler: "glue_text_pair_prompting"
+    handler_options:
+      prompt_builder_type: "glue_stsb_prompt"
+      prompt_template: |
+        Example:
+        Sentence 1: "A plane is taking off."
+        Sentence 2: "An air plane is taking off."
+        Similarity Score (0.0-5.0): 5.0
+        ###
+        Sentence 1: "{input_text_pair1}"
+        Sentence 2: "{input_text_pair2}"
+        Similarity Score (0.0-5.0):
+      postprocessor_key: "glue_stsb_output"
+      dataset_config_name: "stsb"
+      max_new_tokens: 10
+
+    evaluation_metrics:
+      - name: "pearson_correlation"
+        options: {}
+      - name: "spearman_correlation"
+        options: {}
 
 # ============================
 # Models Configuration

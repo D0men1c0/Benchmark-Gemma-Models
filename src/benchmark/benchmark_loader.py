@@ -428,6 +428,11 @@ class BenchmarkRunner:
             # Clean up model resources after processing all tasks for it
             self._cleanup_model_resources(model, tokenizer)
 
+            # Save intermediate results after each model
+            self.logger.info(f"Saving intermediate results after processing model '{model_name}'...")
+            self._save_results()
+
         # Save final results after all models are processed
+        self.logger.info("All models processed. Saving final results...")
         self._save_results()
         return self.results
