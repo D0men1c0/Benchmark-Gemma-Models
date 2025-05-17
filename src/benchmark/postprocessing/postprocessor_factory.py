@@ -1,8 +1,14 @@
 from typing import Type, Dict
 from .base_postprocessor import BasePostProcessor
 from .concrete_postprocessors import (
-    DefaultPostProcessor, MMLUPostProcessor, GSM8KPostProcessor,
-    SummarizationPostProcessor, TranslationPostProcessor # Import others you create
+    DefaultPostProcessor, 
+    MMLUPostProcessor, 
+    GSM8KPostProcessor,
+    SummarizationPostProcessor, 
+    TranslationPostProcessor,
+    GlueSST2OutputPostProcessor,
+    GlueMRPCOutputPostProcessor,
+    GlueSTSBOutputPostProcessor
 )
 
 class PostProcessorFactory:
@@ -13,6 +19,9 @@ class PostProcessorFactory:
         "translation": TranslationPostProcessor,     # Use default or specific TranslationPostProcessor
         "mmlu_generation": MMLUPostProcessor,        # Use specific MMLU processor
         "gsm8k": GSM8KPostProcessor,                 # Use specific GSM8K processor (for Exact Match)
+        "glue_sst2_output": GlueSST2OutputPostProcessor,
+        "glue_mrpc_output": GlueMRPCOutputPostProcessor,
+        "glue_stsb_output": GlueSTSBOutputPostProcessor,
         "generic_generation": DefaultPostProcessor,  # Generic fallback
         "unknown": DefaultPostProcessor,             # Fallback for unknown types
         # Add other task_type -> PostProcessor Class mappings here

@@ -1,6 +1,9 @@
 import re
 from typing import Dict, Any, Tuple, List
 from .base_postprocessor import BasePostProcessor
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 # --- Helper Functions (can stay here or move to a shared utils file) ---
 
@@ -110,3 +113,110 @@ class SummarizationPostProcessor(DefaultPostProcessor):
 
 class TranslationPostProcessor(DefaultPostProcessor):
     pass
+
+
+class GlueSST2OutputPostProcessor(BasePostProcessor):
+    """
+    Post-processor for GLUE SST-2 sentiment classification outputs from a prompted LLM.
+    Maps textual sentiment predictions (e.g., "positive", "negative") to class indices (0 or 1).
+    """
+    def process(self, predictions: List[str], labels: List[Any], batch: Dict[str, Any] = None) -> Tuple[List[int], List[int]]:
+        """
+        Processes raw LLM outputs for SST-2.
+
+        :param predictions: List of raw generated text from the model.
+        :param labels: List of original labels (expected to be 0 or 1).
+        :param batch: The original batch data (optional).
+        :return: Tuple of (list_of_predicted_class_indices, list_of_original_class_indices).
+                 SST-2 labels: 0 for negative, 1 for positive.
+        """
+        processed_predictions: List[int] = []
+        for pred_text in predictions:
+            text_lower = pred_text.strip().lower()
+            # More robust parsing can be added here
+            if "positive" in text_lower or re.search(r"\bpos\b", text_lower):
+                processed_predictions.append(1)
+            elif "negative" in text_lower or re.search(r"\bneg\b", text_lower):
+                processed_predictions.append(0)
+            else:
+                logger.warning(f"SST-2 PostProcessor: Could not reliably parse sentiment from '{pred_text}'. Defaulting to 0 (invalid).")
+                processed_predictions.append(0) # Invalid prediction marker
+
+        # Ensure labels are integers
+        processed_labels = [int(l) if isinstance(l, (int, float, str)) and str(l).isdigit() else -1 for l in labels]
+        return processed_predictions, processed_labels
+
+
+class GlueMRPCOutputPostProcessor(BasePostProcessor):
+    """
+    Post-processor for GLUE MRPC paraphrase detection outputs from a prompted LLM.
+    Maps textual predictions (e.g., "yes", "no") to class indices (0 or 1).
+    """
+    def process(self, predictions: List[str], labels: List[Any], batch: Dict[str, Any] = None) -> Tuple[List[int], List[int]]:
+        """
+        Processes raw LLM outputs for MRPC.
+
+        :param predictions: List of raw generated text from the model.
+        :param labels: List of original labels (expected to be 0 or 1).
+        :param batch: The original batch data (optional).
+        :return: Tuple of (list_of_predicted_class_indices, list_of_original_class_indices).
+                 MRPC labels: 0 for not equivalent, 1 for equivalent.
+        """
+        processed_predictions: List[int] = []
+        for pred_text in predictions:
+            text_lower = pred_text.strip().lower()
+            if "yes" in text_lower or re.search(r"\byes\b", text_lower) or "equivalent" in text_lower:
+                processed_predictions.append(1)
+            elif "no" in text_lower or re.search(r"\bno\b", text_lower) or "not equivalent" in text_lower:
+                processed_predictions.append(0)
+            else:
+                logger.warning(f"MRPC PostProcessor: Could not reliably parse paraphrase judgment from '{pred_text}'. Defaulting to class 0.")
+                processed_predictions.append(0) # Invalid prediction marker
+
+        processed_labels = [int(l) if isinstance(l, (int, float, str)) and str(l).isdigit() else -1 for l in labels]
+        return processed_predictions, processed_labels
+
+
+class GlueSTSBOutputPostProcessor(BasePostProcessor):
+    """
+    Post-processor for GLUE STS-B semantic similarity outputs from a prompted LLM.
+    Extracts a float score from the model's textual output.
+    """
+    def process(self, predictions: List[str], labels: List[Any], batch: Dict[str, Any] = None) -> Tuple[List[float], List[float]]:
+        """
+        Processes raw LLM outputs for STS-B.
+
+        :param predictions: List of raw generated text from the model.
+        :param labels: List of original labels (expected to be float scores).
+        :param batch: The original batch data (optional).
+        :return: Tuple of (list_of_predicted_scores, list_of_original_scores).
+        """
+        processed_predictions: List[float] = []
+        default_invalid_score = -1.0
+
+        for pred_text in predictions:
+            text_to_search = pred_text.strip()
+            # Regex to find numbers, including decimals.
+            # More robust parsing might be needed depending on LLM output format.
+            match = re.search(r"(\d+\.?\d*|\.\d+)", text_to_search)
+            if match:
+                try:
+                    score = float(match.group(1))
+                    # Clamp to 0-5 range for STS-B, or normalize if needed
+                    score = max(0.0, min(5.0, score))
+                    processed_predictions.append(score)
+                except ValueError:
+                    logger.warning(f"STSB PostProcessor: Found number but failed to convert to float: '{match.group(1)}' in '{pred_text}'. Defaulting.")
+                    processed_predictions.append(default_invalid_score)
+            else:
+                logger.warning(f"STSB PostProcessor: Could not parse similarity score from '{pred_text}'. Defaulting.")
+                processed_predictions.append(default_invalid_score)
+
+        processed_labels = []
+        for l in labels:
+            try:
+                processed_labels.append(float(l))
+            except (ValueError, TypeError):
+                logger.warning(f"STSB PostProcessor: Could not convert label '{l}' to float. Defaulting.")
+                processed_labels.append(default_invalid_score)
+        return processed_predictions, processed_labels

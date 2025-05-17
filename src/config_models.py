@@ -60,6 +60,7 @@ class TaskConfig(BaseModel):
     # e.g., task name, type, datasets, evaluation metrics, etc.
     name: str
     type: str # e.g., "classification", "generation"
+    handler: Optional[str] = None
     description: Optional[str] = None
     datasets: List[DatasetConfig]
     evaluation_metrics: List[MetricConfig]

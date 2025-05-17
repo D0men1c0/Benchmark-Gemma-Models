@@ -532,3 +532,146 @@ class TextPairClassificationTaskHandler(TaskHandler):
             except Exception as e:
                 self.logger.error(f"Inference/logit processing error in TextPairClassification: {e}", exc_info=True)
                 return [], []
+
+class GlueClassificationPromptingTaskHandler(TaskHandler):
+    """
+    Task handler for single-sentence GLUE classification tasks using a prompting approach.
+    """
+
+    def __init__(self, model: Any, tokenizer: Any, device: str, advanced_args: Optional[Dict[str, Any]] = None):
+        """
+        Initialize the GlueClassificationPromptingTaskHandler.
+        :param model: Loaded model instance.
+        :param tokenizer: Loaded tokenizer instance.
+        :param device: Device to run the model on.
+        :param advanced_args: Dictionary of advanced arguments from configuration,
+                              including global settings and task-specific handler_options.
+        """
+        super().__init__(model, tokenizer, device, advanced_args)
+        builder_type = self.advanced_args.get("prompt_builder_type")
+        self.postprocessor_key = self.advanced_args.get("postprocessor_key")
+
+        if not builder_type:
+            raise ValueError(f"{self.__class__.__name__} requires 'prompt_builder_type' in handler_options.")
+        if not self.postprocessor_key:
+            raise ValueError(f"{self.__class__.__name__} requires 'postprocessor_key' in handler_options.")
+
+        self.prompt_builder = PromptBuilderFactory.get_builder(
+            builder_type=builder_type,
+            prompt_template=self.advanced_args.get("prompt_template"),
+            handler_args=self.advanced_args.copy()
+        )
+        self.logger.info(f"Initialized {self.__class__.__name__} with prompt_builder='{builder_type}', postprocessor='{self.postprocessor_key}'.")
+
+    def _prepare_batch_items_for_prompting(self, batch: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Any]]:
+        """
+        Helper to prepare items for prompting and extract original labels.
+        :param batch: Dictionary containing the batch data.
+        :return: Tuple of (batch_items_for_prompting, labels_original).
+                 batch_items_for_prompting: List of dictionaries with input text.
+                 labels_original: List of original labels.
+        """
+        input_texts = _ensure_list(batch.get("input_text", []))
+        labels_original = _ensure_list(batch.get("label_index", batch.get("label", [])))
+
+        if not input_texts or len(input_texts) != len(labels_original):
+            self.logger.warning(
+                f"{self.__class__.__name__} batch: Input/Label count mismatch or empty. "
+                f"Texts:{len(input_texts)}, Labels:{len(labels_original)}. Skipping."
+            )
+            return [], []
+
+        batch_items = []
+        for text in input_texts:
+            item_data = {"input_text": text}
+            if "dataset_config_name" in self.advanced_args: # Pass context if available/needed
+                 item_data["dataset_config_name"] = self.advanced_args["dataset_config_name"]
+            batch_items.append(item_data)
+        return batch_items, labels_original
+
+    def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
+        """
+        Process a batch of single-sentence classification data.
+        :param batch: Dictionary containing the batch data.
+                      Expected keys: "input_text", "label_index", "label".
+        :return: Tuple of generated outputs and corresponding labels.
+        """
+        batch_items_for_prompting, labels_original = self._prepare_batch_items_for_prompting(batch)
+        if not batch_items_for_prompting:
+            return [], labels_original # Return original labels if no items to process, for accountability
+
+        prompts = self.prompt_builder.build_prompts(batch_items_for_prompting)
+        if not prompts:
+            self.logger.warning(f"{self.__class__.__name__}: PromptBuilder returned no prompts.")
+            return [], labels_original
+
+        raw_model_outputs = self._generate_text(prompts)
+
+        if len(raw_model_outputs) != len(labels_original):
+            self.logger.error(
+                f"{self.__class__.__name__}: Mismatch between #generated outputs ({len(raw_model_outputs)}) and "
+                f"#labels ({len(labels_original)}). Trimming to shortest length."
+            )
+            min_len = min(len(raw_model_outputs), len(labels_original))
+            raw_model_outputs = raw_model_outputs[:min_len]
+            labels_to_process = labels_original[:min_len]
+            if not raw_model_outputs: # If trimming resulted in no outputs
+                return [], []
+        else:
+            labels_to_process = labels_original
+
+        return self._post_process(raw_model_outputs, labels_to_process, batch)
+
+    def _post_process(self, outputs: List[str], labels: List[Any], batch: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
+        """
+        Post-processes the raw model outputs to extract class predictions.
+        :param outputs: Raw generated text from the model for the batch.
+        :param labels: Raw labels from the dataset batch.
+        :param batch: The original batch data (optional).
+        :return: Tuple of (processed_predictions, processed_labels).
+                  Predictions are cleaned to extract the first valid letter (A, B, C, or D).
+        """
+        try:
+            processor = PostProcessorFactory.get_processor(self.postprocessor_key)
+            return processor.process(outputs, labels, batch)
+        except Exception as err:
+            self.logger.error(f"{self.__class__.__name__}: Post-processing with key '{self.postprocessor_key}' failed: {err}. Returning empty.", exc_info=True)
+            return [], []
+
+
+class GlueTextPairPromptingTaskHandler(GlueClassificationPromptingTaskHandler): # Can inherit for common logic
+    """
+    Task handler for GLUE text-pair classification/regression tasks using a prompting approach.
+    """
+    def __init__(self, model: Any, tokenizer: Any, device: str, advanced_args: Optional[Dict[str, Any]] = None):
+        super().__init__(model, tokenizer, device, advanced_args) # Initializes prompt_builder, postprocessor_key etc.
+
+    def _prepare_batch_items_for_prompting(self, batch: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Any]]:
+        """
+        Helper to prepare items for prompting and extract original labels for text pairs.
+        :param batch: Dictionary containing the batch data.
+        :return: Tuple of (batch_items_for_prompting, labels_original).
+                 batch_items_for_prompting: List of dictionaries with input text pairs.
+                 labels_original: List of original labels.
+        """
+        texts1 = _ensure_list(batch.get("input_text_pair1", []))
+        texts2 = _ensure_list(batch.get("input_text_pair2", []))
+        labels_original = _ensure_list(batch.get("label_index", batch.get("label", [])))
+
+        if not texts1 or not texts2 or len(texts1) != len(texts2) or len(texts1) != len(labels_original):
+            self.logger.warning(
+                f"{self.__class__.__name__} batch: Input/Label count mismatch or empty. "
+                f"T1:{len(texts1)}, T2:{len(texts2)}, L:{len(labels_original)}. Skipping."
+            )
+            return [], []
+
+        batch_items = []
+        for i in range(len(texts1)):
+            item_data = {
+                "input_text_pair1": texts1[i],
+                "input_text_pair2": texts2[i]
+            }
+            if "dataset_config_name" in self.advanced_args: # Pass context if available/needed
+                 item_data["dataset_config_name"] = self.advanced_args["dataset_config_name"]
+            batch_items.append(item_data)
+        return batch_items, labels_original

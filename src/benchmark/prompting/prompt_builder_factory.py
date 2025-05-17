@@ -4,6 +4,9 @@ from .concrete_prompt_builders import (
     TemplateBasedPromptBuilder,
     MMLUPromptBuilder,
     TranslationPromptBuilder,
+    GlueSST2PromptBuilder,
+    GlueMRPCPromptBuilder,
+    GlueSTSBPromptBuilder
 )
 from utils.logger import setup_logger
 
@@ -18,6 +21,9 @@ class PromptBuilderFactory:
         "template_based": TemplateBasedPromptBuilder,
         "mmlu": MMLUPromptBuilder,
         "translation": TranslationPromptBuilder,
+        "glue_sst2_prompt": GlueSST2PromptBuilder,
+        "glue_mrpc_prompt": GlueMRPCPromptBuilder,
+        "glue_stsb_prompt": GlueSTSBPromptBuilder,
         # Add other prompt_builder_types and their corresponding classes
     }
 

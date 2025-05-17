@@ -276,8 +276,9 @@ class BenchmarkRunner:
             current_advanced_args["dataset_name"] = first_dataset_cfg.name # e.g., "opus100", "glue"
 
         try:
+            handler_key_to_use = task_cfg.handler if task_cfg.handler else task_type
             handler = TaskHandlerFactory.get_handler(
-                task_type, 
+                handler_key_to_use, 
                 model, 
                 tokenizer, 
                 self.device, 
@@ -427,6 +428,11 @@ class BenchmarkRunner:
             # Clean up model resources after processing all tasks for it
             self._cleanup_model_resources(model, tokenizer)
 
+            # Save intermediate results after each model
+            self.logger.info(f"Saving intermediate results after processing model '{model_name}'...")
+            self._save_results()
+
         # Save final results after all models are processed
+        self.logger.info("All models processed. Saving final results...")
         self._save_results()
         return self.results
