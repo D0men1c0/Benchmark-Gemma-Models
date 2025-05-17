@@ -1,812 +1,865 @@
 {
     "gemma-7b - 4quant": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.2,
-            "accuracy": 0.2,
-            "f1_score": 0.07272727272727272,
-            "precision": 0.04444444444444444,
-            "recall": 0.2,
-            "rouge": {
-                "rouge1_f": 0.199999999,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.199999999
-            },
-            "bleu": 0.02114742526881129,
-            "meteor": 0.1,
-            "bert_score": {
-                "bertscore_precision": 0.9982761144638062,
-                "bertscore_recall": 0.9982761144638062,
-                "bertscore_f1": 0.9982761144638062
-            }
+            "exact_match": 0.3,
+            "accuracy": 0.3,
+            "f1_score": 0.18502463054187193,
+            "precision": 0.2126086956521739,
+            "recall": 0.3
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.2514776227714982,
-                "rouge1_p": 0.31583764274940745,
-                "rouge1_r": 0.23220198816267912,
-                "rouge2_f": 0.05510446236325348,
-                "rouge2_p": 0.06221171192695748,
-                "rouge2_r": 0.055279930787436725,
-                "rougeL_f": 0.20282441535011025,
-                "rougeL_p": 0.2622123464770524,
-                "rougeL_r": 0.18532164970210413
+                "rouge1_f": 0.2218583919812811,
+                "rouge1_p": 0.2585679370512662,
+                "rouge1_r": 0.22231177003674688,
+                "rouge2_f": 0.07914960590206192,
+                "rouge2_p": 0.08849255934047812,
+                "rouge2_r": 0.08582211214204477,
+                "rougeL_f": 0.20487498728954823,
+                "rougeL_p": 0.237672634926571,
+                "rougeL_r": 0.2066709053727606
             },
             "bert_score": {
-                "bertscore_precision": 0.8375310897827148,
-                "bertscore_recall": 0.8200451135635376,
-                "bertscore_f1": 0.8282670974731445
+                "bertscore_precision": 0.811754584312439,
+                "bertscore_recall": 0.8114193677902222,
+                "bertscore_f1": 0.8109291791915894
             },
             "distinct_ngram": {
-                "distinct_1": 0.42424242424242425,
-                "distinct_2": 0.7947494033412887,
-                "distinct_3": 0.863080684596577
+                "distinct_1": 0.22073250490516677,
+                "distinct_2": 0.4744015957446808,
+                "distinct_3": 0.568435282189929
             },
-            "word_entropy": 6.875531426224303
+            "word_entropy": 7.8882484040825585,
+            "toxicity": {
+                "toxic": 0.002736406804760918
+            }
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.2611763775430474,
-                "rouge1_p": 0.24337752083685166,
-                "rouge1_r": 0.3818842269822662,
-                "rouge2_f": 0.07198967312575692,
-                "rouge2_p": 0.06625226225667102,
-                "rouge2_r": 0.12682146218731585,
-                "rougeL_f": 0.23650656725769137,
-                "rougeL_p": 0.22458287028223778,
-                "rougeL_r": 0.3438746105412772,
-                "rougeLsum_f": 0.23650656725769137,
-                "rougeLsum_p": 0.22458287028223778,
-                "rougeLsum_r": 0.3438746105412772
+                "rouge1_f": 0.1690687610167426,
+                "rouge1_p": 0.1918410559978149,
+                "rouge1_r": 0.21552223486813216,
+                "rouge2_f": 0.03860950703718907,
+                "rouge2_p": 0.05365138664630009,
+                "rouge2_r": 0.05549406715210828,
+                "rougeL_f": 0.1546086758446908,
+                "rougeL_p": 0.1763498524620539,
+                "rougeL_r": 0.19869165016168253,
+                "rougeLsum_f": 0.1546086758446908,
+                "rougeLsum_p": 0.1763498524620539,
+                "rougeLsum_r": 0.19869165016168253
             },
             "bert_score": {
-                "bertscore_precision": 0.7620494365692139,
-                "bertscore_recall": 0.7787722945213318,
-                "bertscore_f1": 0.7701662182807922
+                "bertscore_precision": 0.7275184392929077,
+                "bertscore_recall": 0.7378618717193604,
+                "bertscore_f1": 0.7323261499404907
             },
-            "meteor": 0.18890355463312214,
-            "bleu": 0.028105392207229053,
+            "meteor": 0.11719289829473546,
+            "bleu": 0.019131794751963544,
             "distinct_ngram": {
-                "distinct_1": 0.5180722891566265,
-                "distinct_2": 0.8035230352303523,
-                "distinct_3": 0.8765432098765432,
-                "distinct_4": 0.8944444444444445
+                "distinct_1": 0.37070403737070406,
+                "distinct_2": 0.6620386048086692,
+                "distinct_3": 0.7422680412371134,
+                "distinct_4": 0.7624694802929892
             },
-            "word_entropy": 7.7579389814404145,
-            "semantic_similarity": 0.583624204620719
+            "word_entropy": 8.611956868467866,
+            "semantic_similarity": 0.42572444062680004,
+            "toxicity": {
+                "toxic": 0.005644258748507127
+            }
         },
         "OPUS-100 English-to-French": {
-            "bleu": 0.06918869263201598,
-            "meteor": 0.35679448618533227,
+            "bleu": 0.03964551913959262,
+            "meteor": 0.2076093820462713,
             "rouge": {
-                "rougeL_f": 0.32118593634658066
+                "rougeL_f": 0.19723536688499663
             },
             "bert_score": {
-                "bertscore_precision": 0.7268669009208679,
-                "bertscore_recall": 0.7950772643089294,
-                "bertscore_f1": 0.7586858868598938
+                "bertscore_precision": 0.5668790936470032,
+                "bertscore_recall": 0.6630617380142212,
+                "bertscore_f1": 0.6064704656600952
             },
-            "semantic_similarity": 0.7411193728446961
+            "semantic_similarity": 0.42489984471350906,
+            "toxicity": {
+                "toxic": 0.02376148469642082
+            }
         }
     },
     "gemma-2b - 4quant": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.3,
-            "accuracy": 0.3,
-            "f1_score": 0.20606060606060606,
-            "precision": 0.24444444444444446,
-            "recall": 0.3,
-            "rouge": {
-                "rouge1_f": 0.29999999850000003,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.29999999850000003
-            },
-            "bleu": 0.023403473193207163,
-            "meteor": 0.15,
-            "bert_score": {
-                "bertscore_precision": 0.9995068311691284,
-                "bertscore_recall": 0.9995068311691284,
-                "bertscore_f1": 0.9995068311691284
-            }
+            "exact_match": 0.24,
+            "accuracy": 0.24,
+            "f1_score": 0.0929032258064516,
+            "precision": 0.0576,
+            "recall": 0.24
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.2527742211760168,
-                "rouge1_p": 0.3127456971005358,
-                "rouge1_r": 0.2567807625183226,
-                "rouge2_f": 0.07504249130085391,
-                "rouge2_p": 0.09130166405546572,
-                "rouge2_r": 0.08076026113898767,
-                "rougeL_f": 0.229069288538303,
-                "rougeL_p": 0.2847385676417934,
-                "rougeL_r": 0.22780859045910443
+                "rouge1_f": 0.2755755661531896,
+                "rouge1_p": 0.3733897102035952,
+                "rouge1_r": 0.24733339083318143,
+                "rouge2_f": 0.08422733335343997,
+                "rouge2_p": 0.10710479734788249,
+                "rouge2_r": 0.08099098755982227,
+                "rougeL_f": 0.2427380284583163,
+                "rougeL_p": 0.32738859608913456,
+                "rougeL_r": 0.21988687526491948
             },
             "bert_score": {
-                "bertscore_precision": 0.8406698107719421,
-                "bertscore_recall": 0.8215568661689758,
-                "bertscore_f1": 0.8309379816055298
+                "bertscore_precision": 0.8334585428237915,
+                "bertscore_recall": 0.8191133141517639,
+                "bertscore_f1": 0.8260707259178162
             },
             "distinct_ngram": {
-                "distinct_1": 0.25773195876288657,
-                "distinct_2": 0.5091383812010444,
-                "distinct_3": 0.5978835978835979
+                "distinct_1": 0.18075963404491266,
+                "distinct_2": 0.4298566207478212,
+                "distinct_3": 0.5470353477765109
             },
-            "word_entropy": 6.842853615233809
+            "word_entropy": 7.823374043716019,
+            "toxicity": {
+                "toxic": 0.004777482938952744
+            }
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.25531494569932334,
-                "rouge1_p": 0.25918692599976845,
-                "rouge1_r": 0.30612047112047114,
-                "rouge2_f": 0.06440836993100696,
-                "rouge2_p": 0.05893074907348793,
-                "rouge2_r": 0.09074002691075862,
-                "rougeL_f": 0.23364138613600588,
-                "rougeL_p": 0.2402573385928044,
-                "rougeL_r": 0.27724468624468623,
-                "rougeLsum_f": 0.23364138613600588,
-                "rougeLsum_p": 0.2402573385928044,
-                "rougeLsum_r": 0.27724468624468623
+                "rouge1_f": 0.20581408091548314,
+                "rouge1_p": 0.17424403370021171,
+                "rouge1_r": 0.33744723987721037,
+                "rouge2_f": 0.06506391623813101,
+                "rouge2_p": 0.047307237954094736,
+                "rouge2_r": 0.140867491896734,
+                "rougeL_f": 0.1877789233704643,
+                "rougeL_p": 0.15920375065181389,
+                "rougeL_r": 0.3096921677941297,
+                "rougeLsum_f": 0.1877789233704643,
+                "rougeLsum_p": 0.15920375065181389,
+                "rougeLsum_r": 0.3096921677941297
             },
             "bert_score": {
-                "bertscore_precision": 0.8406402468681335,
-                "bertscore_recall": 0.8485671281814575,
-                "bertscore_f1": 0.8442443609237671
+                "bertscore_precision": 0.8136962056159973,
+                "bertscore_recall": 0.8521115183830261,
+                "bertscore_f1": 0.8321948051452637
             },
-            "meteor": 0.17907589310527922,
-            "bleu": 0.018370098086790593,
+            "meteor": 0.19529346976313114,
+            "bleu": 0.030732838281682984,
             "distinct_ngram": {
-                "distinct_1": 0.3256616800920598,
-                "distinct_2": 0.5040745052386496,
-                "distinct_3": 0.5488810365135454,
-                "distinct_4": 0.5697258641239571
+                "distinct_1": 0.3116009714178965,
+                "distinct_2": 0.5777861587780502,
+                "distinct_3": 0.6525794783932991,
+                "distinct_4": 0.673842014222564
             },
-            "word_entropy": 7.159079188786101,
-            "semantic_similarity": 0.5355181843042374
+            "word_entropy": 8.888305369133999,
+            "semantic_similarity": 0.5237745118141174,
+            "toxicity": {
+                "toxic": 0.0056865393824409695
+            }
         },
         "OPUS-100 English-to-French": {
-            "bleu": 0.016076016336568858,
-            "meteor": 0.11390487096137598,
+            "bleu": 0.02238707611787973,
+            "meteor": 0.10088965398056553,
             "rouge": {
-                "rougeL_f": 0.12246273283823686
+                "rougeL_f": 0.09031604284774707
             },
             "bert_score": {
-                "bertscore_precision": 0.5239772200584412,
-                "bertscore_recall": 0.5989168882369995,
-                "bertscore_f1": 0.5583897233009338
+                "bertscore_precision": 0.5273199677467346,
+                "bertscore_recall": 0.6345043778419495,
+                "bertscore_f1": 0.5749650001525879
             },
-            "semantic_similarity": 0.3170177167281508
+            "semantic_similarity": 0.26054286658763887,
+            "toxicity": {
+                "toxic": 0.010815110247349366
+            }
         }
     },
-    "gpt2 - 4quant": {
+    "gpt2 full prec": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.2,
-            "accuracy": 0.2,
-            "f1_score": 0.06666666666666667,
-            "precision": 0.04,
-            "recall": 0.2,
-            "rouge": {
-                "rouge1_f": 0.199999999,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.199999999
-            },
-            "bleu": 0.02114742526881129,
-            "meteor": 0.1,
-            "bert_score": {
-                "bertscore_precision": 0.9980226755142212,
-                "bertscore_recall": 0.9980226755142212,
-                "bertscore_f1": 0.9980226755142212
-            }
+            "exact_match": 0.24,
+            "accuracy": 0.24,
+            "f1_score": 0.0929032258064516,
+            "precision": 0.0576,
+            "recall": 0.24
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.20270143469963825,
-                "rouge1_p": 0.25760729746444033,
-                "rouge1_r": 0.20295159120478265,
-                "rouge2_f": 0.057800552620875245,
-                "rouge2_p": 0.08508258496792893,
-                "rouge2_r": 0.058802764948388674,
-                "rougeL_f": 0.19869140963698162,
-                "rougeL_p": 0.2537807668521954,
-                "rougeL_r": 0.19873686183477376
+                "rouge1_f": 0.2799513986456262,
+                "rouge1_p": 0.3242927247285401,
+                "rouge1_r": 0.266692957949462,
+                "rouge2_f": 0.09413179444027168,
+                "rouge2_p": 0.11439618641326338,
+                "rouge2_r": 0.08768913521455465,
+                "rougeL_f": 0.25422921765317114,
+                "rougeL_p": 0.29417849832405346,
+                "rougeL_r": 0.24322678487446775
             },
             "bert_score": {
-                "bertscore_precision": 0.7927160859107971,
-                "bertscore_recall": 0.7743531465530396,
-                "bertscore_f1": 0.7831783294677734
+                "bertscore_precision": 0.8213069438934326,
+                "bertscore_recall": 0.7957189083099365,
+                "bertscore_f1": 0.808066189289093
             },
             "distinct_ngram": {
-                "distinct_1": 0.23543123543123542,
-                "distinct_2": 0.36202830188679247,
-                "distinct_3": 0.39618138424821003
+                "distinct_1": 0.1372707115500907,
+                "distinct_2": 0.3101201384646711,
+                "distinct_3": 0.36350545155317837
             },
-            "word_entropy": 6.75017655979544
+            "word_entropy": 8.30228669130595,
+            "toxicity": {
+                "toxic": 0.004571489989757538
+            }
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.21328731924161284,
-                "rouge1_p": 0.19430178237074705,
-                "rouge1_r": 0.27682558953147185,
-                "rouge2_f": 0.04100269857196409,
-                "rouge2_p": 0.0351691664155763,
-                "rouge2_r": 0.056787253397009504,
-                "rougeL_f": 0.19309758071921063,
-                "rougeL_p": 0.17503064043700073,
-                "rougeL_r": 0.250497505144564,
-                "rougeLsum_f": 0.19309758071921063,
-                "rougeLsum_p": 0.17503064043700073,
-                "rougeLsum_r": 0.250497505144564
+                "rouge1_f": 0.1952999472397369,
+                "rouge1_p": 0.17738144426687888,
+                "rouge1_r": 0.27969921241864754,
+                "rouge2_f": 0.05561029158406275,
+                "rouge2_p": 0.042775919902146076,
+                "rouge2_r": 0.11032705527951805,
+                "rougeL_f": 0.17519282407291598,
+                "rougeL_p": 0.15743261473751466,
+                "rougeL_r": 0.2546164470266072,
+                "rougeLsum_f": 0.17519282407291598,
+                "rougeLsum_p": 0.15743261473751466,
+                "rougeLsum_r": 0.2546164470266072
             },
             "bert_score": {
-                "bertscore_precision": 0.8183509707450867,
-                "bertscore_recall": 0.8497390747070312,
-                "bertscore_f1": 0.833699107170105
+                "bertscore_precision": 0.7990107536315918,
+                "bertscore_recall": 0.8402841091156006,
+                "bertscore_f1": 0.8189771771430969
             },
-            "meteor": 0.15109524131215343,
-            "bleu": 0.0200453677024333,
+            "meteor": 0.1662910859947659,
+            "bleu": 0.022140728460785786,
             "distinct_ngram": {
-                "distinct_1": 0.31892826274848746,
-                "distinct_2": 0.5126416739319966,
-                "distinct_3": 0.5672823218997362,
-                "distinct_4": 0.5936113575865128
+                "distinct_1": 0.22164048865619546,
+                "distinct_2": 0.4119718309859155,
+                "distinct_3": 0.4674955595026643,
+                "distinct_4": 0.4854838709677419
             },
-            "word_entropy": 7.355265181877021,
-            "semantic_similarity": 0.5245281279087066
+            "word_entropy": 8.527699837709825,
+            "semantic_similarity": 0.4282629035413265,
+            "toxicity": {
+                "toxic": 0.005224728328175843
+            }
         },
         "OPUS-100 English-to-French": {
-            "bleu": 0.0002249802805578766,
-            "meteor": 0.005811549927771073,
+            "bleu": 0.0060875342877561205,
+            "meteor": 0.03639975963616509,
             "rouge": {
-                "rougeL_f": 0.016385071816172374
+                "rougeL_f": 0.07498771802126525
             },
             "bert_score": {
-                "bertscore_precision": 0.5355321764945984,
-                "bertscore_recall": 0.589353084564209,
-                "bertscore_f1": 0.5596710443496704
+                "bertscore_precision": 0.5424299836158752,
+                "bertscore_recall": 0.597045361995697,
+                "bertscore_f1": 0.5677289366722107
             },
-            "semantic_similarity": 0.5695437103509903
+            "semantic_similarity": 0.5532233974337578,
+            "toxicity": {
+                "toxic": 0.033763069207780064
+            }
         }
     },
     "phi-2 - 4quant": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.1,
-            "accuracy": 0.1,
-            "f1_score": 0.04,
-            "precision": 0.025,
-            "recall": 0.1,
-            "rouge": {
-                "rouge1_f": 0.0999999995,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.0999999995
-            },
-            "bleu": 0.01778279410038924,
-            "meteor": 0.05,
-            "bert_score": {
-                "bertscore_precision": 0.9980316162109375,
-                "bertscore_recall": 0.9980316162109375,
-                "bertscore_f1": 0.9980316162109375
-            }
+            "exact_match": 0.48,
+            "accuracy": 0.48,
+            "f1_score": 0.46337634627108315,
+            "precision": 0.5121904761904762,
+            "recall": 0.48
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.29620757194244735,
-                "rouge1_p": 0.27311572455068983,
-                "rouge1_r": 0.3753472187592317,
-                "rouge2_f": 0.09722718415573758,
-                "rouge2_p": 0.08233674127030816,
-                "rouge2_r": 0.14372568524368723,
-                "rougeL_f": 0.2716790449139203,
-                "rougeL_p": 0.25385926834501915,
-                "rougeL_r": 0.3396154963851246
+                "rouge1_f": 0.3526705318405746,
+                "rouge1_p": 0.32662149097542553,
+                "rouge1_r": 0.42840192135216154,
+                "rouge2_f": 0.13976116005230257,
+                "rouge2_p": 0.12324136330818938,
+                "rouge2_r": 0.1835123994530485,
+                "rougeL_f": 0.3160549696011339,
+                "rougeL_p": 0.2927549318152352,
+                "rougeL_r": 0.3851816110250938
             },
             "bert_score": {
-                "bertscore_precision": 0.8388189077377319,
-                "bertscore_recall": 0.8413591384887695,
-                "bertscore_f1": 0.8400057554244995
+                "bertscore_precision": 0.8512676358222961,
+                "bertscore_recall": 0.8588039875030518,
+                "bertscore_f1": 0.8549391031265259
             },
             "distinct_ngram": {
-                "distinct_1": 0.2665289256198347,
-                "distinct_2": 0.55741127348643,
-                "distinct_3": 0.7267932489451476
+                "distinct_1": 0.20007995202878273,
+                "distinct_2": 0.5515848980415909,
+                "distinct_3": 0.7489292270038752
             },
-            "word_entropy": 6.907514447086272
-        },
-        "CNN/DailyMail Summarization": {
-            "rouge": {
-                "rouge1_f": 0.3064313677795403,
-                "rouge1_p": 0.2328901678947728,
-                "rouge1_r": 0.48267430149783086,
-                "rouge2_f": 0.11545677253055461,
-                "rouge2_p": 0.0831410398305584,
-                "rouge2_r": 0.2101362269167147,
-                "rougeL_f": 0.2951091116043429,
-                "rougeL_p": 0.22331277807148137,
-                "rougeL_r": 0.46755461037813983,
-                "rougeLsum_f": 0.2951091116043429,
-                "rougeLsum_p": 0.22331277807148137,
-                "rougeLsum_r": 0.46755461037813983
-            },
-            "bert_score": {
-                "bertscore_precision": 0.8558093905448914,
-                "bertscore_recall": 0.8844044804573059,
-                "bertscore_f1": 0.8697860836982727
-            },
-            "meteor": 0.30774340525744714,
-            "bleu": 0.05548967021844096,
-            "distinct_ngram": {
-                "distinct_1": 0.49527806925498424,
-                "distinct_2": 0.8419936373276776,
-                "distinct_3": 0.9121114683815649,
-                "distinct_4": 0.9274106175514626
-            },
-            "word_entropy": 7.9393046132876846,
-            "semantic_similarity": 0.6778981387615204
-        },
-        "OPUS-100 English-to-French": {
-            "bleu": 0.018125322191609516,
-            "meteor": 0.25800385422164596,
-            "rouge": {
-                "rougeL_f": 0.2404341569283678
-            },
-            "bert_score": {
-                "bertscore_precision": 0.6791080236434937,
-                "bertscore_recall": 0.7100782990455627,
-                "bertscore_f1": 0.6931765675544739
-            },
-            "semantic_similarity": 0.6164763361215592
-        }
-    },
-    "llama2-7b - 4quant": {
-        "MMLU (all Subset - Templated)": {
-            "exact_match": 0.2,
-            "accuracy": 0.2,
-            "f1_score": 0.06666666666666667,
-            "precision": 0.04,
-            "recall": 0.2,
-            "rouge": {
-                "rouge1_f": 0.199999999,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.199999999
-            },
-            "bleu": 0.02114742526881129,
-            "meteor": 0.1,
-            "bert_score": {
-                "bertscore_precision": 0.9980226755142212,
-                "bertscore_recall": 0.9980226755142212,
-                "bertscore_f1": 0.9980226755142212
+            "word_entropy": 8.134404006316489,
+            "toxicity": {
+                "toxic": 0.0010582017549313604
             }
         },
-        "GSM8K (Reasoning Text Analysis)": {
-            "exact_match": 0.0,
-            "rouge": {
-                "rouge1_f": 0.11043704870293262,
-                "rouge1_p": 0.12948525569242256,
-                "rouge1_r": 0.12935385470416844,
-                "rouge2_f": 0.03771753413544433,
-                "rouge2_p": 0.04389171376894287,
-                "rouge2_r": 0.045734039396800805,
-                "rougeL_f": 0.08807307491612418,
-                "rougeL_p": 0.10476894363568494,
-                "rougeL_r": 0.10350448527123786
-            },
-            "bert_score": {
-                "bertscore_precision": 0.7656004428863525,
-                "bertscore_recall": 0.7849855422973633,
-                "bertscore_f1": 0.7749279737472534
-            },
-            "distinct_ngram": {
-                "distinct_1": 0.3047945205479452,
-                "distinct_2": 0.48606271777003485,
-                "distinct_3": 0.5336879432624113
-            },
-            "word_entropy": 6.634215893370522
-        },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.21142084713346518,
-                "rouge1_p": 0.15859452642132643,
-                "rouge1_r": 0.34780759904289316,
-                "rouge2_f": 0.061910449823361226,
-                "rouge2_p": 0.04396556541474155,
-                "rouge2_r": 0.11764503247430078,
-                "rougeL_f": 0.20053132219181974,
-                "rougeL_p": 0.15066426189376522,
-                "rougeL_r": 0.32870947494476904,
-                "rougeLsum_f": 0.20053132219181974,
-                "rougeLsum_p": 0.15066426189376522,
-                "rougeLsum_r": 0.32870947494476904
+                "rouge1_f": 0.2326043861593088,
+                "rouge1_p": 0.17357565906244157,
+                "rouge1_r": 0.41111447868820966,
+                "rouge2_f": 0.07101441574665221,
+                "rouge2_p": 0.04898015997717109,
+                "rouge2_r": 0.15084603835465063,
+                "rougeL_f": 0.21762416750447752,
+                "rougeL_p": 0.1624422730015243,
+                "rougeL_r": 0.3848970314699096,
+                "rougeLsum_f": 0.21762416750447752,
+                "rougeLsum_p": 0.1624422730015243,
+                "rougeLsum_r": 0.3848970314699096
             },
             "bert_score": {
-                "bertscore_precision": 0.8224779367446899,
-                "bertscore_recall": 0.8565265536308289,
-                "bertscore_f1": 0.8391135931015015
+                "bertscore_precision": 0.8316993117332458,
+                "bertscore_recall": 0.8680868744850159,
+                "bertscore_f1": 0.8493511080741882
             },
-            "meteor": 0.19570417926828262,
-            "bleu": 0.029318090130259454,
+            "meteor": 0.2425453930665446,
+            "bleu": 0.028297245985432713,
             "distinct_ngram": {
-                "distinct_1": 0.4573804573804574,
-                "distinct_2": 0.7426470588235294,
-                "distinct_3": 0.821656050955414,
-                "distinct_4": 0.8615879828326181
+                "distinct_1": 0.36320235034887993,
+                "distinct_2": 0.7207190511489993,
+                "distinct_3": 0.82996632996633,
+                "distinct_4": 0.8538519637462235
             },
-            "word_entropy": 7.660892968160716,
-            "semantic_similarity": 0.5323933377861977
-        },
-        "OPUS-100 English-to-French": {
-            "bleu": 0.0013458765525608618,
-            "meteor": 0.030161061543280365,
-            "rouge": {
-                "rougeL_f": 0.057546730372725216
-            },
-            "bert_score": {
-                "bertscore_precision": 0.5921961069107056,
-                "bertscore_recall": 0.6514134407043457,
-                "bertscore_f1": 0.6193318367004395
-            },
-            "semantic_similarity": 0.5956723988056183
-        }
-    },
-    "llama3-8b - 4quant": {
-        "MMLU (all Subset - Templated)": {
-            "exact_match": 0.1,
-            "accuracy": 0.1,
-            "f1_score": 0.05,
-            "precision": 0.03333333333333333,
-            "recall": 0.1,
-            "rouge": {
-                "rouge1_f": 0.0999999995,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.0999999995
-            },
-            "bleu": 0.01778279410038924,
-            "meteor": 0.05,
-            "bert_score": {
-                "bertscore_precision": 0.9983506202697754,
-                "bertscore_recall": 0.9983506202697754,
-                "bertscore_f1": 0.9983506202697754
+            "word_entropy": 9.16696311116288,
+            "semantic_similarity": 0.6200586718320846,
+            "toxicity": {
+                "toxic": 0.015874030914856122
             }
         },
-        "GSM8K (Reasoning Text Analysis)": {
-            "exact_match": 0.0,
-            "rouge": {
-                "rouge1_f": 0.3429740788740838,
-                "rouge1_p": 0.3511693909312452,
-                "rouge1_r": 0.3597423670407573,
-                "rouge2_f": 0.10965671646087058,
-                "rouge2_p": 0.11646315384266852,
-                "rouge2_r": 0.10816876999050976,
-                "rougeL_f": 0.32012372637720554,
-                "rougeL_p": 0.3295985900491115,
-                "rougeL_r": 0.332890560487415
-            },
-            "bert_score": {
-                "bertscore_precision": 0.8411839604377747,
-                "bertscore_recall": 0.8186569213867188,
-                "bertscore_f1": 0.8296416997909546
-            },
-            "distinct_ngram": {
-                "distinct_1": 0.24497991967871485,
-                "distinct_2": 0.44523326572008115,
-                "distinct_3": 0.4948770491803279
-            },
-            "word_entropy": 7.195974130016363
-        },
-        "CNN/DailyMail Summarization": {
-            "rouge": {
-                "rouge1_f": 0.25963657510392885,
-                "rouge1_p": 0.19494097346906142,
-                "rouge1_r": 0.4621489067371421,
-                "rouge2_f": 0.07023395111510858,
-                "rouge2_p": 0.050556644683989814,
-                "rouge2_r": 0.15504639263175848,
-                "rougeL_f": 0.24363345072814332,
-                "rougeL_p": 0.1840031293212265,
-                "rougeL_r": 0.43206825465648996,
-                "rougeLsum_f": 0.24363345072814332,
-                "rougeLsum_p": 0.1840031293212265,
-                "rougeLsum_r": 0.43206825465648996
-            },
-            "bert_score": {
-                "bertscore_precision": 0.8422322273254395,
-                "bertscore_recall": 0.8762399554252625,
-                "bertscore_f1": 0.8586336374282837
-            },
-            "meteor": 0.2404388543989291,
-            "bleu": 0.031388064326247724,
-            "distinct_ngram": {
-                "distinct_1": 0.5410821643286573,
-                "distinct_2": 0.8977732793522267,
-                "distinct_3": 0.9642126789366053,
-                "distinct_4": 0.9793388429752066
-            },
-            "word_entropy": 8.204195645316233,
-            "semantic_similarity": 0.6440934121608735
-        },
         "OPUS-100 English-to-French": {
-            "bleu": 0.0011186242205331008,
-            "meteor": 0.014277718864145163,
+            "bleu": 0.02503606965560283,
+            "meteor": 0.16379983101423876,
             "rouge": {
-                "rouge_exception": 1.0
+                "rougeL_f": 0.14769063217319786
             },
             "bert_score": {
-                "bertscore_precision": 0.4926518499851227,
-                "bertscore_recall": 0.5414397716522217,
-                "bertscore_f1": 0.5143080949783325
+                "bertscore_precision": 0.5845333933830261,
+                "bertscore_recall": 0.6879999041557312,
+                "bertscore_f1": 0.6308208107948303
             },
-            "semantic_similarity": 0.5004879511892796
+            "semantic_similarity": 0.4533509338647127,
+            "toxicity": {
+                "toxic": 0.005724779781885445
+            }
         }
     },
     "mistral-7b - 4quant": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.3,
-            "accuracy": 0.3,
-            "f1_score": 0.2533333333333333,
-            "precision": 0.25,
-            "recall": 0.3,
-            "rouge": {
-                "rouge1_f": 0.29999999850000003,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.29999999850000003
-            },
-            "bleu": 0.023403473193207163,
-            "meteor": 0.15,
-            "bert_score": {
-                "bertscore_precision": 0.9989814758300781,
-                "bertscore_recall": 0.9989814758300781,
-                "bertscore_f1": 0.9989814758300781
-            }
+            "exact_match": 0.32,
+            "accuracy": 0.32,
+            "f1_score": 0.2790526315789474,
+            "precision": 0.5298245614035088,
+            "recall": 0.32
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.09921665969396001,
-                "rouge1_p": 0.0993471278445199,
-                "rouge1_r": 0.10993084698448981,
-                "rouge2_f": 0.01580046937356128,
-                "rouge2_p": 0.016867413632119514,
-                "rouge2_r": 0.019079569297456824,
-                "rougeL_f": 0.09721665969396001,
-                "rougeL_p": 0.09738634353079442,
-                "rougeL_r": 0.10789003065795919
+                "rouge1_f": 0.23593590949531681,
+                "rouge1_p": 0.2622887802884216,
+                "rouge1_r": 0.23654824005355451,
+                "rouge2_f": 0.07556850971982566,
+                "rouge2_p": 0.08036920510065788,
+                "rouge2_r": 0.08032075283860478,
+                "rougeL_f": 0.21655285532360377,
+                "rougeL_p": 0.24051067871676035,
+                "rougeL_r": 0.2181319972653124
             },
             "bert_score": {
-                "bertscore_precision": 0.7976921200752258,
-                "bertscore_recall": 0.761204719543457,
-                "bertscore_f1": 0.7789692282676697
+                "bertscore_precision": 0.8169784545898438,
+                "bertscore_recall": 0.801907479763031,
+                "bertscore_f1": 0.8092057704925537
             },
             "distinct_ngram": {
-                "distinct_1": 0.18660287081339713,
-                "distinct_2": 0.3305084745762712,
-                "distinct_3": 0.46568627450980393
+                "distinct_1": 0.17446043165467626,
+                "distinct_2": 0.42243623112962,
+                "distinct_3": 0.5627637130801688
             },
-            "word_entropy": 5.8150476771549915
-        },
-        "CNN/DailyMail Summarization": {
-            "rouge": {
-                "rouge1_f": 0.22900465652793284,
-                "rouge1_p": 0.1875039030942854,
-                "rouge1_r": 0.3510899822664529,
-                "rouge2_f": 0.07769236095632594,
-                "rouge2_p": 0.05882393611817127,
-                "rouge2_r": 0.1365782104074787,
-                "rougeL_f": 0.20560031934688672,
-                "rougeL_p": 0.1700083692984748,
-                "rougeL_r": 0.3126715118479825,
-                "rougeLsum_f": 0.20560031934688672,
-                "rougeLsum_p": 0.1700083692984748,
-                "rougeLsum_r": 0.3126715118479825
-            },
-            "bert_score": {
-                "bertscore_precision": 0.8185433149337769,
-                "bertscore_recall": 0.8570289611816406,
-                "bertscore_f1": 0.8372582197189331
-            },
-            "meteor": 0.20384756194041462,
-            "bleu": 0.028432025305790018,
-            "distinct_ngram": {
-                "distinct_1": 0.38085742771684944,
-                "distinct_2": 0.594159113796576,
-                "distinct_3": 0.6337741607324516,
-                "distinct_4": 0.6485097636176773
-            },
-            "word_entropy": 7.037082404233341,
-            "semantic_similarity": 0.4890899956226349
-        },
-        "OPUS-100 English-to-French": {
-            "bleu": 0.005023801132257783,
-            "meteor": 0.05056608341849622,
-            "rouge": {
-                "rougeL_f": 0.05730111594928313
-            },
-            "bert_score": {
-                "bertscore_precision": 0.5594739317893982,
-                "bertscore_recall": 0.6188766360282898,
-                "bertscore_f1": 0.5859305262565613
-            },
-            "semantic_similarity": 0.5416459530591965
-        }
-    },
-    "llama3-8b - 8quant": {
-        "MMLU (all Subset - Templated)": {
-            "exact_match": 0.2,
-            "accuracy": 0.2,
-            "f1_score": 0.08,
-            "precision": 0.05,
-            "recall": 0.2,
-            "rouge": {
-                "rouge1_f": 0.199999999,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.199999999
-            },
-            "bleu": 0.02114742526881129,
-            "meteor": 0.1,
-            "bert_score": {
-                "bertscore_precision": 0.9984744191169739,
-                "bertscore_recall": 0.9984744191169739,
-                "bertscore_f1": 0.9984744191169739
+            "word_entropy": 7.901374154477449,
+            "toxicity": {
+                "toxic": 0.0018432492937427013
             }
         },
-        "GSM8K (Reasoning Text Analysis)": {
-            "exact_match": 0.0,
-            "rouge": {
-                "rouge1_f": 0.3582750349866938,
-                "rouge1_p": 0.33784959431453226,
-                "rouge1_r": 0.41069011463805144,
-                "rouge2_f": 0.11526351634069051,
-                "rouge2_p": 0.1124198236495558,
-                "rouge2_r": 0.12998075295719563,
-                "rougeL_f": 0.31973225493409735,
-                "rougeL_p": 0.3019515821390556,
-                "rougeL_r": 0.3658659402175882
-            },
-            "bert_score": {
-                "bertscore_precision": 0.8446909785270691,
-                "bertscore_recall": 0.8252369165420532,
-                "bertscore_f1": 0.8347355127334595
-            },
-            "distinct_ngram": {
-                "distinct_1": 0.28515240904621436,
-                "distinct_2": 0.5283018867924528,
-                "distinct_3": 0.5797392176529589
-            },
-            "word_entropy": 7.477664943150556
-        },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.24365726002606825,
-                "rouge1_p": 0.1906640472363063,
-                "rouge1_r": 0.39378094136917663,
-                "rouge2_f": 0.05928435645265555,
-                "rouge2_p": 0.039972920562735215,
-                "rouge2_r": 0.12357318020732655,
-                "rougeL_f": 0.22744342341849916,
-                "rougeL_p": 0.17961837010020365,
-                "rougeL_r": 0.3628114003996357,
-                "rougeLsum_f": 0.22744342341849916,
-                "rougeLsum_p": 0.17961837010020365,
-                "rougeLsum_r": 0.3628114003996357
+                "rouge1_f": 0.19294341481606378,
+                "rouge1_p": 0.15988536686503704,
+                "rouge1_r": 0.29913959264516915,
+                "rouge2_f": 0.045705180957056224,
+                "rouge2_p": 0.030971505119112085,
+                "rouge2_r": 0.09843837010920334,
+                "rougeL_f": 0.1788575936796168,
+                "rougeL_p": 0.14685237430742662,
+                "rougeL_r": 0.27992775233708567,
+                "rougeLsum_f": 0.1788575936796168,
+                "rougeLsum_p": 0.14685237430742662,
+                "rougeLsum_r": 0.27992775233708567
             },
             "bert_score": {
-                "bertscore_precision": 0.83946692943573,
-                "bertscore_recall": 0.867262065410614,
-                "bertscore_f1": 0.8527385592460632
+                "bertscore_precision": 0.8053221106529236,
+                "bertscore_recall": 0.8331478834152222,
+                "bertscore_f1": 0.8188288807868958
             },
-            "meteor": 0.21616730543799112,
-            "bleu": 0.032353112335960235,
+            "meteor": 0.1743417986892266,
+            "bleu": 0.026212611620810677,
             "distinct_ngram": {
-                "distinct_1": 0.5135983263598326,
-                "distinct_2": 0.8202959830866807,
-                "distinct_3": 0.8846153846153846,
-                "distinct_4": 0.9114470842332614
+                "distinct_1": 0.36532882011605416,
+                "distinct_2": 0.6848544164423783,
+                "distinct_3": 0.7815750371471025,
+                "distinct_4": 0.8109801955377287
             },
-            "word_entropy": 7.969882477618352,
-            "semantic_similarity": 0.5860025882720947
+            "word_entropy": 8.95786426174044,
+            "semantic_similarity": 0.5257429894804955,
+            "toxicity": {
+                "toxic": 0.02607820171979256
+            }
         },
         "OPUS-100 English-to-French": {
-            "bleu": 0.00021601948849469418,
-            "meteor": 0.00527887364119526,
+            "bleu": 0.04402438318122554,
+            "meteor": 0.24263082004258837,
             "rouge": {
-                "rouge_exception": 1.0
+                "rougeL_f": 0.25286900763458
             },
             "bert_score": {
-                "bertscore_precision": 0.48027896881103516,
-                "bertscore_recall": 0.5284531116485596,
-                "bertscore_f1": 0.5017272233963013
+                "bertscore_precision": 0.5734155774116516,
+                "bertscore_recall": 0.6815169453620911,
+                "bertscore_f1": 0.6211054921150208
             },
-            "semantic_similarity": 0.49947575107216835
+            "semantic_similarity": 0.4295930951833725,
+            "toxicity": {
+                "toxic": 0.009263102253898979
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.4,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
         }
     },
     "mistral-7b - 8quant": {
         "MMLU (all Subset - Templated)": {
-            "exact_match": 0.2,
-            "accuracy": 0.2,
-            "f1_score": 0.15,
-            "precision": 0.13333333333333333,
-            "recall": 0.2,
-            "rouge": {
-                "rouge1_f": 0.199999999,
-                "rouge2_f": 0.0,
-                "rougeL_f": 0.199999999
-            },
-            "bleu": 0.02114742526881129,
-            "meteor": 0.1,
-            "bert_score": {
-                "bertscore_precision": 0.998490035533905,
-                "bertscore_recall": 0.998490035533905,
-                "bertscore_f1": 0.998490035533905
-            }
+            "exact_match": 0.48,
+            "accuracy": 0.48,
+            "f1_score": 0.45117408906882595,
+            "precision": 0.513968253968254,
+            "recall": 0.48
         },
         "GSM8K (Reasoning Text Analysis)": {
             "exact_match": 0.0,
             "rouge": {
-                "rouge1_f": 0.24561022630209145,
-                "rouge1_p": 0.22801159339135033,
-                "rouge1_r": 0.336028485912509,
-                "rouge2_f": 0.08517257569017275,
-                "rouge2_p": 0.07815324144546157,
-                "rouge2_r": 0.11413402674763869,
-                "rougeL_f": 0.22288706246028353,
-                "rougeL_p": 0.21083290675267294,
-                "rougeL_r": 0.29933895116444054
+                "rouge1_f": 0.26845968659647373,
+                "rouge1_p": 0.286455496001664,
+                "rouge1_r": 0.282770039216403,
+                "rouge2_f": 0.08765385876481023,
+                "rouge2_p": 0.08966333907497946,
+                "rouge2_r": 0.09439873506785638,
+                "rougeL_f": 0.2440811722076377,
+                "rougeL_p": 0.26036372036244987,
+                "rougeL_r": 0.2560279516484198
             },
             "bert_score": {
-                "bertscore_precision": 0.8145248293876648,
-                "bertscore_recall": 0.7956123948097229,
-                "bertscore_f1": 0.80470210313797
+                "bertscore_precision": 0.825437605381012,
+                "bertscore_recall": 0.8102545738220215,
+                "bertscore_f1": 0.817545473575592
             },
             "distinct_ngram": {
-                "distinct_1": 0.3138424821002387,
-                "distinct_2": 0.5954106280193237,
-                "distinct_3": 0.6931540342298288
+                "distinct_1": 0.19069412662090007,
+                "distinct_2": 0.4540303888745815,
+                "distinct_3": 0.5710931385337855
             },
-            "word_entropy": 7.156356040789426
+            "word_entropy": 8.127717935361044,
+            "toxicity": {
+                "toxic": 0.0020290016185026617
+            }
         },
         "CNN/DailyMail Summarization": {
             "rouge": {
-                "rouge1_f": 0.24663568603655478,
-                "rouge1_p": 0.18598515737987317,
-                "rouge1_r": 0.40020856303209246,
-                "rouge2_f": 0.06996839055099964,
-                "rouge2_p": 0.04931782217781443,
-                "rouge2_r": 0.13110346293273123,
-                "rougeL_f": 0.22048444930587915,
-                "rougeL_p": 0.16605164196524289,
-                "rougeL_r": 0.35912342594695534,
-                "rougeLsum_f": 0.22048444930587915,
-                "rougeLsum_p": 0.16605164196524289,
-                "rougeLsum_r": 0.35912342594695534
+                "rouge1_f": 0.21197534833099266,
+                "rouge1_p": 0.17045055692837027,
+                "rouge1_r": 0.3179114406103287,
+                "rouge2_f": 0.058671123928458954,
+                "rouge2_p": 0.04263283954958018,
+                "rouge2_r": 0.10378804657203151,
+                "rougeL_f": 0.18914798946231431,
+                "rougeL_p": 0.1527858339759541,
+                "rougeL_r": 0.2835204192818074,
+                "rougeLsum_f": 0.18914798946231431,
+                "rougeLsum_p": 0.1527858339759541,
+                "rougeLsum_r": 0.2835204192818074
             },
             "bert_score": {
-                "bertscore_precision": 0.8262931108474731,
-                "bertscore_recall": 0.8645585775375366,
-                "bertscore_f1": 0.844903826713562
+                "bertscore_precision": 0.8293972015380859,
+                "bertscore_recall": 0.852491557598114,
+                "bertscore_f1": 0.8406503796577454
             },
-            "meteor": 0.2453888129136589,
-            "bleu": 0.031162847888188273,
+            "meteor": 0.19350330350680772,
+            "bleu": 0.024393203585213682,
             "distinct_ngram": {
-                "distinct_1": 0.46177062374245476,
-                "distinct_2": 0.7469512195121951,
-                "distinct_3": 0.8039014373716632,
-                "distinct_4": 0.8226141078838174
+                "distinct_1": 0.4238563983786914,
+                "distinct_2": 0.7258347978910369,
+                "distinct_3": 0.8097213989330172,
+                "distinct_4": 0.8344331133773245
             },
-            "word_entropy": 7.753896102530744,
-            "semantic_similarity": 0.5623811706900597
+            "word_entropy": 8.23231648157632,
+            "semantic_similarity": 0.5633894518017769,
+            "toxicity": {
+                "toxic": 0.003490350834908895
+            }
         },
         "OPUS-100 English-to-French": {
-            "bleu": 0.000286972773363631,
-            "meteor": 0.010657367124254498,
+            "bleu": 0.04621584655755272,
+            "meteor": 0.25807893937323634,
             "rouge": {
-                "rougeL_f": 0.03508653155833035
+                "rougeL_f": 0.23764459199153104
             },
             "bert_score": {
-                "bertscore_precision": 0.5659179091453552,
-                "bertscore_recall": 0.6118062734603882,
-                "bertscore_f1": 0.5863396525382996
+                "bertscore_precision": 0.5682207942008972,
+                "bertscore_recall": 0.6940007209777832,
+                "bertscore_f1": 0.6231771111488342
             },
-            "semantic_similarity": 0.6418782100081444
+            "semantic_similarity": 0.4527017419040203,
+            "toxicity": {
+                "toxic": 0.0108533993747551
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.4,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
+    },
+    "llama3-8b - 8quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.44,
+            "accuracy": 0.44,
+            "f1_score": 0.4326412870119964,
+            "precision": 0.5135353535353535,
+            "recall": 0.44
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge1_f": 0.35565978300650763,
+                "rouge1_p": 0.3815281605267142,
+                "rouge1_r": 0.35242840127199476,
+                "rouge2_f": 0.12329126687275525,
+                "rouge2_p": 0.1254028673944935,
+                "rouge2_r": 0.12966228733598276,
+                "rougeL_f": 0.320852883621099,
+                "rougeL_p": 0.3430268435124324,
+                "rougeL_r": 0.31907950409562863
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8208271861076355,
+                "bertscore_recall": 0.8036942481994629,
+                "bertscore_f1": 0.8119741082191467
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.22659713168187745,
+                "distinct_2": 0.5320834433588593,
+                "distinct_3": 0.6616742444503878
+            },
+            "word_entropy": 8.313358051062995,
+            "toxicity": {
+                "toxic": 0.0015181063208729029
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.21680051790230145,
+                "rouge1_p": 0.1705761196029087,
+                "rouge1_r": 0.37155286691960715,
+                "rouge2_f": 0.0628123048496326,
+                "rouge2_p": 0.043073136777542466,
+                "rouge2_r": 0.14316199623155484,
+                "rougeL_f": 0.20127878616337805,
+                "rougeL_p": 0.15792540936979013,
+                "rougeL_r": 0.3467605750591625,
+                "rougeLsum_f": 0.20127878616337805,
+                "rougeLsum_p": 0.15792540936979013,
+                "rougeLsum_r": 0.3467605750591625
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8061001300811768,
+                "bertscore_recall": 0.8419538736343384,
+                "bertscore_f1": 0.8234115839004517
+            },
+            "meteor": 0.21212032478709097,
+            "bleu": 0.034758945905171715,
+            "distinct_ngram": {
+                "distinct_1": 0.36408147277712494,
+                "distinct_2": 0.6820249159580779,
+                "distinct_3": 0.7735623003194888,
+                "distinct_4": 0.7935067553942327
+            },
+            "word_entropy": 9.137783757476786,
+            "semantic_similarity": 0.5317982311546803,
+            "toxicity": {
+                "toxic": 0.0022783192817587405
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.05202283722659722,
+            "meteor": 0.2586628092089009,
+            "rouge": {
+                "rougeL_f": 0.2500611705571852
+            },
+            "bert_score": {
+                "bertscore_precision": 0.592379093170166,
+                "bertscore_recall": 0.6853244304656982,
+                "bertscore_f1": 0.6334099173545837
+            },
+            "semantic_similarity": 0.531291221678257,
+            "toxicity": {
+                "toxic": 0.029045576199423523
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.58,
+            "f1_score": 0.7272727272727273,
+            "precision": 0.5957446808510638,
+            "recall": 0.9333333333333333
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
+    },
+    "llama2-7b - 4quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.34,
+            "accuracy": 0.34,
+            "f1_score": 0.3001449275362319,
+            "precision": 0.3965367965367965,
+            "recall": 0.34
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge1_f": 0.2142269377858024,
+                "rouge1_p": 0.2768809539371684,
+                "rouge1_r": 0.1943505387101138,
+                "rouge2_f": 0.0671292704944741,
+                "rouge2_p": 0.08487825100559,
+                "rouge2_r": 0.06084399195548089,
+                "rougeL_f": 0.1969015401333094,
+                "rougeL_p": 0.2544660493972638,
+                "rougeL_r": 0.17939002829976697
+            },
+            "bert_score": {
+                "bertscore_precision": 0.7963831424713135,
+                "bertscore_recall": 0.7952633500099182,
+                "bertscore_f1": 0.7954913377761841
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.17480359147025815,
+                "distinct_2": 0.3867387592487194,
+                "distinct_3": 0.45640877598152424
+            },
+            "word_entropy": 8.016015980938764,
+            "toxicity": {
+                "toxic": 0.005686844593146816
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.22459221852115333,
+                "rouge1_p": 0.1747198200855967,
+                "rouge1_r": 0.36492718005923397,
+                "rouge2_f": 0.06957941968614635,
+                "rouge2_p": 0.04824865894020953,
+                "rouge2_r": 0.14276203141507607,
+                "rougeL_f": 0.20700361312165494,
+                "rougeL_p": 0.1605963814088762,
+                "rougeL_r": 0.33847457177376344,
+                "rougeLsum_f": 0.20700361312165494,
+                "rougeLsum_p": 0.1605963814088762,
+                "rougeLsum_r": 0.33847457177376344
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8044140338897705,
+                "bertscore_recall": 0.8388946652412415,
+                "bertscore_f1": 0.8211774230003357
+            },
+            "meteor": 0.2091339422012403,
+            "bleu": 0.035279456189579686,
+            "distinct_ngram": {
+                "distinct_1": 0.36508273228680527,
+                "distinct_2": 0.6840300107181136,
+                "distinct_3": 0.7816291161178509,
+                "distinct_4": 0.8105977665863806
+            },
+            "word_entropy": 9.077406575931672,
+            "semantic_similarity": 0.5507720416039228,
+            "toxicity": {
+                "toxic": 0.013780669302213937
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.1339538078970193,
+            "meteor": 0.3065956505145932,
+            "rouge": {
+                "rougeL_f": 0.33545900395390504
+            },
+            "bert_score": {
+                "bertscore_precision": 0.7748383283615112,
+                "bertscore_recall": 0.8016892075538635,
+                "bertscore_f1": 0.7870602607727051
+            },
+            "semantic_similarity": 0.7418132495880126,
+            "toxicity": {
+                "toxic": 0.003410458113066852
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.4,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
+    },
+    "llama3-8b - 4quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.26,
+            "accuracy": 0.26,
+            "f1_score": 0.2058722976370035,
+            "precision": 0.37666666666666665,
+            "recall": 0.26
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge1_f": 0.3463624670033557,
+                "rouge1_p": 0.4313593540354754,
+                "rouge1_r": 0.3251806628129426,
+                "rouge2_f": 0.1318792163688263,
+                "rouge2_p": 0.1741848414214286,
+                "rouge2_r": 0.12981274730117512,
+                "rougeL_f": 0.3121058662126471,
+                "rougeL_p": 0.3828409389200964,
+                "rougeL_r": 0.2937063951147287
+            },
+            "bert_score": {
+                "bertscore_precision": 0.7389988899230957,
+                "bertscore_recall": 0.7114666700363159,
+                "bertscore_f1": 0.7246501445770264
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.21654875422946784,
+                "distinct_2": 0.48659600997506236,
+                "distinct_3": 0.5930489731437599
+            },
+            "word_entropy": 8.284307561015252,
+            "toxicity": {
+                "toxic": 0.002392488119658083
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.21094067365289376,
+                "rouge1_p": 0.16847242250799233,
+                "rouge1_r": 0.34944108591266565,
+                "rouge2_f": 0.064767025875799,
+                "rouge2_p": 0.04546235482163479,
+                "rouge2_r": 0.1368926202818165,
+                "rougeL_f": 0.19675173752965733,
+                "rougeL_p": 0.1562300742254482,
+                "rougeL_r": 0.328734328936701,
+                "rougeLsum_f": 0.19675173752965733,
+                "rougeLsum_p": 0.1562300742254482,
+                "rougeLsum_r": 0.328734328936701
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8211895823478699,
+                "bertscore_recall": 0.8564806580543518,
+                "bertscore_f1": 0.8382613658905029
+            },
+            "meteor": 0.20670972553506647,
+            "bleu": 0.033007635928418995,
+            "distinct_ngram": {
+                "distinct_1": 0.3374164810690423,
+                "distinct_2": 0.6315099288122893,
+                "distinct_3": 0.7186081694402421,
+                "distinct_4": 0.7361588392516227
+            },
+            "word_entropy": 9.05348887887659,
+            "semantic_similarity": 0.5516497104242444,
+            "toxicity": {
+                "toxic": 0.0028006199887022376
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.07668806911718518,
+            "meteor": 0.2947626267085073,
+            "rouge": {
+                "rougeL_f": 0.3060470613135573
+            },
+            "bert_score": {
+                "bertscore_precision": 0.68413245677948,
+                "bertscore_recall": 0.7479808926582336,
+                "bertscore_f1": 0.7120704650878906
+            },
+            "semantic_similarity": 0.638110869973898,
+            "toxicity": {
+                "toxic": 0.015429323447169735
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.4,
+            "f1_score": 0.4230769230769231,
+            "precision": 0.5,
+            "recall": 0.36666666666666664
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
         }
     }
 }
