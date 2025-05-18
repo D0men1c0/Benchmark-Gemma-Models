@@ -1273,5 +1273,108 @@
             "pearson_correlation": 0.0,
             "spearman_correlation": 0.0
         }
+    },
+    "gemma-7b-it - 4quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.5,
+            "accuracy": 0.5,
+            "f1_score": 0.49545730994152054,
+            "precision": 0.5783394383394383,
+            "recall": 0.5
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rouge1_f": 0.3239375596854713,
+                "rouge1_p": 0.3048523884412444,
+                "rouge1_r": 0.3841923716028371,
+                "rouge2_f": 0.10586254534400912,
+                "rouge2_p": 0.09389646711799632,
+                "rouge2_r": 0.13625798835846464,
+                "rougeL_f": 0.2883749180544752,
+                "rougeL_p": 0.2708622658827598,
+                "rougeL_r": 0.3438719379719241
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8437180519104004,
+                "bertscore_recall": 0.8461050987243652,
+                "bertscore_f1": 0.8448162078857422
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.21231979030144169,
+                "distinct_2": 0.5472614840989399,
+                "distinct_3": 0.74497543546226
+            },
+            "word_entropy": 8.066178821306064,
+            "toxicity": {
+                "toxic": 0.0009421078918967396
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.2508147266105814,
+                "rouge1_p": 0.17617673668609385,
+                "rouge1_r": 0.4605110067807419,
+                "rouge2_f": 0.08247106786703927,
+                "rouge2_p": 0.05464492996487007,
+                "rouge2_r": 0.18275228238657337,
+                "rougeL_f": 0.23419632420154735,
+                "rougeL_p": 0.16435107311353825,
+                "rougeL_r": 0.43114167408790677,
+                "rougeLsum_f": 0.23419632420154735,
+                "rougeLsum_p": 0.16435107311353825,
+                "rougeLsum_r": 0.43114167408790677
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8452356457710266,
+                "bertscore_recall": 0.8739455938339233,
+                "bertscore_f1": 0.8592390418052673
+            },
+            "meteor": 0.26884914253325154,
+            "bleu": 0.036559917486466316,
+            "distinct_ngram": {
+                "distinct_1": 0.4200037957866768,
+                "distinct_2": 0.8287028166315387,
+                "distinct_3": 0.9504739794931322,
+                "distinct_4": 0.9761672201601875
+            },
+            "word_entropy": 9.398422349045283,
+            "semantic_similarity": 0.6878555911779404,
+            "toxicity": {
+                "toxic": 0.0018595833994913846
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.0884094101021456,
+            "meteor": 0.27236551316707347,
+            "rouge": {
+                "rougeL_f": 0.2723344474356901
+            },
+            "bert_score": {
+                "bertscore_precision": 0.7036900520324707,
+                "bertscore_recall": 0.7722080945968628,
+                "bertscore_f1": 0.7343739867210388
+            },
+            "semantic_similarity": 0.5139842060208321,
+            "toxicity": {
+                "toxic": 0.0012454364681616426
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.98,
+            "f1_score": 0.9787234042553191,
+            "precision": 1.0,
+            "recall": 0.9583333333333334
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.5,
+            "f1_score": 0.4444444444444444,
+            "precision": 0.6666666666666666,
+            "recall": 0.3333333333333333
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
     }
 }
