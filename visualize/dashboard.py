@@ -186,8 +186,8 @@ current_metrics = [m for m in current_metrics if m not in ["processing_error", "
 
 # --------------------------- TABS ---------------------------
 
-tab_titles = ["📊 Model Comparison", "📚 Task Performance", "⚖️ Metric Breakdown", "🌡️ Overall Heatmap"]
-tab1, tab2, tab3, tab4 = st.tabs(tab_titles)
+tab_titles = ["📊 Model Comparison", "📚 Task Performance", "⚖️ Metric Breakdown", "⚔️ Model vs Model Comparison", "🌡️ Overall Heatmap"]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(tab_titles)
 
 # Tab 1: Model Comparison
 with tab1:
@@ -245,8 +245,67 @@ with tab3:
             else:
                 st.caption(f"No metric data for {model_for_mb} / {task_for_mb}")
 
-# Tab 4: Heatmap
+
+# Tab 4: Model vs. Model Comparison
 with tab4:
+    st.subheader("⚔️ Model vs Model Comparison")
+
+    if not available_models or not available_tasks or not available_metrics:
+        st.info("Ensure models, tasks, and metrics are available for comparison.")
+    else:
+        col1, col2 = st.columns(2)
+        score_m1, score_m2 = None, None
+        data_m1_exists = data_m2_exists = False
+
+        def get_score(model, task, metric, label):
+            st.markdown(f"##### {label}")
+            model_choice = st.selectbox("Select Model:", available_models, key=f"{label}_model")
+            task_choice = st.selectbox("Select Task:", current_tasks, key=f"{label}_task")
+            metric_choice = st.selectbox("Select Metric:", current_metrics, key=f"{label}_metric")
+            score = None
+            exists = False
+
+            if model_choice and task_choice and metric_choice:
+                data = df_to_display[
+                    (df_to_display['model'] == model_choice) &
+                    (df_to_display['task'] == task_choice) &
+                    (df_to_display['full_metric_name'] == metric_choice)
+                ]
+                if not data.empty:
+                    score = data['score'].iloc[0]
+                    st.metric(label=f"{metric_choice} (on {task_choice})", value=f"{score:.4f}")
+                    exists = True
+                else:
+                    st.warning(f"No data for {label} with the current selection.")
+            else:
+                st.caption(f"Select model, task, and metric for {label}.")
+
+            return model_choice, task_choice, metric_choice, score, exists
+
+        with col1:
+            model1, task1, metric1, score_m1, data_m1_exists = get_score("model1", "task1", "metric1", "Model 1")
+        with col2:
+            model2, task2, metric2, score_m2, data_m2_exists = get_score("model2", "task2", "metric2", "Model 2")
+
+        if data_m1_exists and data_m2_exists:
+            if task1 == task2 and metric1 == metric2:
+                st.markdown("---")
+                st.markdown(f"##### Comparison Chart: '{task1}' - Metric '{metric1}'")
+
+                df_compare = pd.DataFrame({
+                    'Model': [model1, model2],
+                    'Score': [score_m1, score_m2]
+                })
+
+                fig = px.bar(df_compare, x='Model', y='Score', color='Model', text_auto='.4f',
+                             title=f"Comparison: {model1} vs {model2}")
+                fig.update_layout(xaxis_title="Selected Model", yaxis_title="Score", showlegend=True)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("To view a direct comparison chart, please select the same Task and Metric for both models.")
+
+# Tab 5: Heatmap
+with tab5:
     st.subheader("Overall Performance Heatmap")
     if not current_metrics:
         st.info("Select metric globally for heatmap.")
