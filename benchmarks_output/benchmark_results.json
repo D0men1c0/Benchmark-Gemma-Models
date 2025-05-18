@@ -1067,5 +1067,108 @@
             "pearson_correlation": 0.0,
             "spearman_correlation": 0.0
         }
+    },
+    "Ministral-8B - 4quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.64,
+            "accuracy": 0.64,
+            "f1_score": 0.6364358786993058,
+            "precision": 0.6724329004329005,
+            "recall": 0.64
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.1,
+            "rouge": {
+                "rouge1_f": 0.3664114128327018,
+                "rouge1_p": 0.32338180570642755,
+                "rouge1_r": 0.451242337255432,
+                "rouge2_f": 0.12925195934760392,
+                "rouge2_p": 0.1085708034474436,
+                "rouge2_r": 0.1743815424477025,
+                "rougeL_f": 0.32439584801670973,
+                "rougeL_p": 0.2863913083622696,
+                "rougeL_r": 0.39995279952414814
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8462582230567932,
+                "bertscore_recall": 0.8601343035697937,
+                "bertscore_f1": 0.8530368208885193
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.22894215966571366,
+                "distinct_2": 0.6259728708027574,
+                "distinct_3": 0.8162806386327861
+            },
+            "word_entropy": 8.441706434469912,
+            "toxicity": {
+                "toxic": 0.0013857645587995648
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.24042937279053184,
+                "rouge1_p": 0.17948146016200756,
+                "rouge1_r": 0.3915117558472519,
+                "rouge2_f": 0.06703389997358351,
+                "rouge2_p": 0.04752921243160228,
+                "rouge2_r": 0.12685360369873222,
+                "rougeL_f": 0.21872657793898617,
+                "rougeL_p": 0.16312255816460508,
+                "rougeL_r": 0.35723257577511697,
+                "rougeLsum_f": 0.21872657793898617,
+                "rougeLsum_p": 0.16312255816460508,
+                "rougeLsum_r": 0.35723257577511697
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8447073101997375,
+                "bertscore_recall": 0.8706204295158386,
+                "bertscore_f1": 0.8573780655860901
+            },
+            "meteor": 0.2361281035115487,
+            "bleu": 0.0279381534967184,
+            "distinct_ngram": {
+                "distinct_1": 0.3992419456727732,
+                "distinct_2": 0.7637795275590551,
+                "distinct_3": 0.8694342869434287,
+                "distinct_4": 0.8906283974777125
+            },
+            "word_entropy": 9.193928029617997,
+            "semantic_similarity": 0.6585602331161499,
+            "toxicity": {
+                "toxic": 0.0009987953410018236
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.07631195605550427,
+            "meteor": 0.28309927088398296,
+            "rouge": {
+                "rougeL_f": 0.2363131266057506
+            },
+            "bert_score": {
+                "bertscore_precision": 0.6234296560287476,
+                "bertscore_recall": 0.7310812473297119,
+                "bertscore_f1": 0.6724721789360046
+            },
+            "semantic_similarity": 0.5825951987504959,
+            "toxicity": {
+                "toxic": 0.0152270498406142
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.64,
+            "f1_score": 0.7692307692307693,
+            "precision": 0.625,
+            "recall": 1.0
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
     }
 }
