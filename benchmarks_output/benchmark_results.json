@@ -1170,5 +1170,108 @@
             "pearson_correlation": 0.0,
             "spearman_correlation": 0.0
         }
+    },
+    "Ministral-8B - 8quant": {
+        "MMLU (all Subset - Templated)": {
+            "exact_match": 0.68,
+            "accuracy": 0.68,
+            "f1_score": 0.6798872180451129,
+            "precision": 0.7186666666666666,
+            "recall": 0.68
+        },
+        "GSM8K (Reasoning Text Analysis)": {
+            "exact_match": 0.2,
+            "rouge": {
+                "rouge1_f": 0.35073188655138,
+                "rouge1_p": 0.30699357861680016,
+                "rouge1_r": 0.44197970483198,
+                "rouge2_f": 0.1252780623169934,
+                "rouge2_p": 0.1057289074649272,
+                "rouge2_r": 0.17212452602635167,
+                "rougeL_f": 0.3116777536979849,
+                "rougeL_p": 0.27252905477072387,
+                "rougeL_r": 0.39382896713483767
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8440098762512207,
+                "bertscore_recall": 0.8580202460289001,
+                "bertscore_f1": 0.8508360385894775
+            },
+            "distinct_ngram": {
+                "distinct_1": 0.23735235123690662,
+                "distinct_2": 0.6463826910074375,
+                "distinct_3": 0.8320036471392751
+            },
+            "word_entropy": 8.518660219598242,
+            "toxicity": {
+                "toxic": 0.0015509510540869086
+            }
+        },
+        "CNN/DailyMail Summarization": {
+            "rouge": {
+                "rouge1_f": 0.2404851910566867,
+                "rouge1_p": 0.1885206173038173,
+                "rouge1_r": 0.37130401572991767,
+                "rouge2_f": 0.06679595325379281,
+                "rouge2_p": 0.048275649172506346,
+                "rouge2_r": 0.11972497813555648,
+                "rougeL_f": 0.22610255041421465,
+                "rougeL_p": 0.17745286000358879,
+                "rougeL_r": 0.34929178415748985,
+                "rougeLsum_f": 0.22610255041421465,
+                "rougeLsum_p": 0.17745286000358879,
+                "rougeLsum_r": 0.34929178415748985
+            },
+            "bert_score": {
+                "bertscore_precision": 0.8423815369606018,
+                "bertscore_recall": 0.8655556440353394,
+                "bertscore_f1": 0.8536989092826843
+            },
+            "meteor": 0.22232495612706593,
+            "bleu": 0.026001114404516818,
+            "distinct_ngram": {
+                "distinct_1": 0.39335548172757473,
+                "distinct_2": 0.7417693169092945,
+                "distinct_3": 0.8407701019252548,
+                "distinct_4": 0.8620847651775487
+            },
+            "word_entropy": 9.147604593258185,
+            "semantic_similarity": 0.6234662476181984,
+            "toxicity": {
+                "toxic": 0.003586107569281012
+            }
+        },
+        "OPUS-100 English-to-French": {
+            "bleu": 0.08119189848321809,
+            "meteor": 0.27967341070884755,
+            "rouge": {
+                "rougeL_f": 0.24219141366466201
+            },
+            "bert_score": {
+                "bertscore_precision": 0.6327611207962036,
+                "bertscore_recall": 0.7367870807647705,
+                "bertscore_f1": 0.6800834536552429
+            },
+            "semantic_similarity": 0.5752697610855102,
+            "toxicity": {
+                "toxic": 0.0032070281717460603
+            }
+        },
+        "GLUE SST-2 (Prompting - Improved)": {
+            "accuracy": 0.52,
+            "f1_score": 0.0,
+            "precision": 0.0,
+            "recall": 0.0
+        },
+        "GLUE MRPC (Prompting - Improved)": {
+            "accuracy": 0.66,
+            "f1_score": 0.7733333333333333,
+            "precision": 0.6444444444444445,
+            "recall": 0.9666666666666667
+        },
+        "GLUE STS-B (Prompting - Improved)": {
+            "pearson_correlation": 0.0,
+            "spearman_correlation": 0.0
+        }
     }
 }
