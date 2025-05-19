@@ -5,3 +5,7 @@ src.zip
 src/config/benchmark_config(1).yaml
 src/config/prove123.yaml
 pyproject.toml
+user_scripts/data/sample_test_dataset.csv
+user_scripts/data/sample_train_dataset.csv
+user_scripts/data/sample_validation_dataset.csv
+/src/benchmark/custom_loader_scripts/data

@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Tuple, List
 from utils.logger import setup_logger
 import torch
+from ..postprocessing.postprocessor_factory import PostProcessorFactory
+from ..postprocessing.concrete_postprocessors import DefaultPostProcessor
 
 class TaskHandler(ABC):
     """Abstract base class for task handlers."""
@@ -157,6 +159,54 @@ class TaskHandler(ABC):
         )
         return generated_texts
 
+    def _apply_post_processing(self, raw_predictions: List[Any], raw_labels: List[Any], original_batch: Optional[Dict[str, Any]] = None) -> Tuple[List[Any], List[Any]]:
+        """
+        Applies post-processing using the configured post-processor.
+        `self.advanced_args` (from handler_options) is used to get post-processor config.
+        :param raw_predictions: Raw predictions from the model.
+        :param raw_labels: Raw labels from the dataset.
+        :param original_batch: Original batch of data (optional).
+        :return: A tuple of (processed_predictions, processed_labels).
+        """
+        postprocessor_key = self.advanced_args.get("postprocessor_key")
+        if not postprocessor_key:
+            self.logger.debug(f"No 'postprocessor_key' in handler_options for {self.__class__.__name__}. Using DefaultPostProcessor.")
+            return DefaultPostProcessor().process(raw_predictions, raw_labels, original_batch)
+
+        # Prepare options for the PostProcessorFactory
+        options_for_factory = {
+            "script_path": self.advanced_args.get("postprocessor_script_path"),
+            "function_name": self.advanced_args.get("postprocessor_function_name"),
+            "script_args": self.advanced_args.get("postprocessor_script_args", {}),
+        }
+        # Merge general postprocessor options if they exist under 'postprocessor_options'
+        if "postprocessor_options" in self.advanced_args:
+            options_for_factory.update(self.advanced_args["postprocessor_options"])
+        
+        # Filter out None values for script_path and function_name as they are essential for CustomScriptPostProcessor init
+        # but script_args can be an empty dict. Other options are passed as is.
+        final_options_for_factory = {k: v for k, v in options_for_factory.items() 
+                                     if not (k in ["script_path", "function_name"] and v is None)}
+
+
+        self.logger.debug(f"Attempting to get post-processor with key '{postprocessor_key}' and options: {final_options_for_factory}")
+        try:
+            post_processor_instance = PostProcessorFactory.get_processor(
+                postprocessor_key, 
+                processor_options=final_options_for_factory
+            )
+            return post_processor_instance.process(raw_predictions, raw_labels, original_batch)
+        except Exception as e:
+            self.logger.error(f"Error during post-processing with key '{postprocessor_key}': {e}", exc_info=True)
+            self.logger.warning("Falling back to DefaultPostProcessor due to error.")
+            return DefaultPostProcessor().process(raw_predictions, raw_labels, original_batch)
+
     @abstractmethod
     def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
+        """
+        Processes a batch of data. Must be implemented by concrete handlers.
+        Should call self._apply_post_processing at the end.
+        :param batch: The input batch of data.
+        :return: A tuple of (predictions, labels).
+        """
         pass
