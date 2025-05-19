@@ -2,6 +2,24 @@
 
 [![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 
+## Table of Contents
+- [Overview](#overview)
+- [Modular Architecture](#modular-architecture)
+  - [Directory Structure](#directory-structure)
+- [Quick Start](#quick-start)
+- [Examples & Getting Started](#examples--getting-started)
+  - [Quick Test with Colab](#quick-test-with-colab)
+  - [Generating a Default Configuration](#generating-a-default-configuration)
+  - [Visualizing Benchmark Results](#visualizing-benchmark-results)
+  - [Disclaimer on Experimental Results](#disclaimer-interpreting-experimental-results)
+- [Configuring Benchmarks (`benchmark_config.yaml`)](#configuring-benchmarks-benchmark_configyaml)
+- [Workflow Deep Dive](#workflow-deep-dive)
+- [Core Components](#core-components)
+- [Key Features](#key-features)
+- [Why Use This Benchmark Suite?](#why-use-this-benchmark-suite)
+- [Next Steps](#next-steps)
+- [License and Important Disclaimers](#license-and-important-disclaimers)
+
 ## Overview
 This framework offers a robust, automated, and scalable solution to assess the performance of Large Language Models (LLMs), with a primary focus on **Gemma models**. It provides insights across diverse tasks, including standard academic benchmarks and custom datasets. The system emphasizes scalability through efficient batch processing and stateful metrics, extensibility via a modular factory-based architecture, and ease of use, ensuring researchers can efficiently measure, compare, and reproduce model performance.
 
@@ -147,7 +165,7 @@ Here's a sneak peek of the dashboard in action:
 
 ![Model vs Model](img/Plots/OPUS-gemma-7b-it-vs-gemma-2b.png)
 
-### ⚠️ Important Disclaimer: Interpreting These Experimental Results ⚠️
+### Disclaimer: Interpreting Experimental Results
 
 The benchmark results presented through this dashboard, along with any accompanying graphs, are **experimental** and have **not been rigorously validated against official leaderboards**. This is primarily due to computational limitations, as testing has been conducted using freely available resources (e.g., Google Colab's free-tier T4 GPU). These results are intended for **illustrative and demonstrative purposes only**, showcasing the framework’s capabilities and offering a preliminary look at model performance under constrained conditions.
 
@@ -441,7 +459,7 @@ This project, Benchmark-Gemma-Models, is released under the **Apache 2.0 License
 All benchmark results provided by or visualized through this framework are for **research, illustrative, and demonstrative purposes only.** They are generated under specific, resource-constrained conditions (often using quantized models, small data subsets, limited prompting, and basic post-processing on hardware like Google Colab's free T4 GPU tier) and **have not been rigorously validated against official leaderboards.**
 
 * **No Guarantees:** The maintainers of this project are not responsible for any decisions made or actions taken based on these experimental results. Users are solely responsible for interpreting and using any outputs.
-* **Experimental Data:** For a detailed understanding of the experimental conditions and limitations affecting the presented results, please see the "Important Disclaimer: Interpreting These Experimental Results" section [*(Link alla sezione del disclaimer sui risultati, se è separata)*] or refer to the notes accompanying any visualized data.
+* **Experimental Data:** For a detailed understanding of the experimental conditions and limitations affecting the presented results, please see the "Important Disclaimer: Interpreting These Experimental Results" section [Disclaimer on Experimental Results](#disclaimer-interpreting-experimental-results) or refer to the notes accompanying any visualized data.
 
 **Models Used and Third-Party License Compliance:**
 
