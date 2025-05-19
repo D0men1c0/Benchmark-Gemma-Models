@@ -13,56 +13,61 @@ The architecture is designed for clarity, maintainability, and extensibility. Ke
 
 ### Directory Structure
 ```bash
-📦 src
-├── 📂 config/
-│   ├── benchmark_config.yaml         # Main Pydantic-driven benchmark configuration
+├── 📦 src /
+│    ├── 📂 config/
+│    │   ├── benchmark_config.yaml         # Main Pydantic-driven benchmark configuration
+│    │
+│    ├── 📂 benchmark/                    # Core benchmarking logic
+│    │   ├── benchmark_loader.py           # Main BenchmarkRunner orchestrating the flow
+│    │   │
+│    │   ├── 📂 models/                   # Model loading and management
+│    │   │   ├── base_model_loader.py      # Abstract model loader interface
+│    │   │   ├── concrete_models.py        # Hugging Face, PyTorch, TensorFlow loaders
+│    │   │   └── models_factory.py         # ModelLoaderFactory
+│    │   │
+│    │   ├── 📂 dataset/                   # Dataset loading and normalization (updated from 'datasets')
+│    │   │   ├── base_dataset_loader.py     # Abstract dataset loader interface
+│    │   │   ├── concrete_dataset_loader.py # Handles HF Hub, local, streaming, field normalization
+│    │   │   └── dataset_factory.py         # DatasetFactory
+│    │   │
+│    │   ├── 📂 prompting/                 # Prompt engineering and building
+│    │   │   ├── base_prompt_builder.py      # Abstract prompt builder interface
+│    │   │   ├── concrete_prompt_builders.py # TemplateBased, MMLU, Translation builders etc.
+│    │   │   └── prompt_builder_factory.py   # PromptBuilderFactory
+│    │   │
+│    │   ├── 📂 tasks/                     # Task-specific prompting and generation logic
+│    │   │   ├── base_task_handler.py       # Abstract task handler interface
+│    │   │   ├── concrete_task_handlers.py  # Handlers for various tasks (QA, Math, Summarization)
+│    │   │   └── task_handlers_factory.py   # TaskHandlerFactory
+│    │   │
+│    │   ├── 📂 postprocessing/             # Task-specific output post-processing
+│    │   │   ├── base_postprocessor.py       # Abstract post-processor interface
+│    │   │   ├── concrete_postprocessors.py  # Implementations for MMLU, GSM8K, etc.
+│    │   │   └── postprocessor_factory.py    # PostProcessorFactory
+│    │   │
+│    │   ├── 📂 evaluation/                 # Evaluation and metrics computation
+│    │   │   ├── evaluator.py                # Evaluator managing stateful metrics lifecycle
+│    │   │   └── 📂 metrics/                 # Metrics computation
+│    │   │       ├── base_metrics.py         # Abstract stateful metric interface (reset, update, result)
+│    │   │       ├── concrete_metrics.py     # Stateful implementations of various metrics
+│    │   │       └── metric_factory.py       # MetricFactory
+│    │   │
+│    │   └── 📂 reporting/                 # Results saving and reporting
+│    │       └── file_manager.py            # Saves results in JSON, CSV, PDF formats
+│    │
+│    ├── 📂 scripts/                       # Execution entry points
+│    │   └── run_benchmark.py               # Main script to run benchmarks
+│    │
+│    ├── 📂 utils/                         # Shared utilities
+│    │   └── logger.py                      # Unified logging system
+│    │
+│    ├── config_models.py                  # Pydantic models for type-safe configuration
+│    └── generate_default_config.py         # Utility to generate a default configuration file
 │
-├── 📂 benchmark/                    # Core benchmarking logic
-│   ├── benchmark_loader.py           # Main BenchmarkRunner orchestrating the flow
-│   │
-│   ├── 📂 models/                   # Model loading and management
-│   │   ├── base_model_loader.py      # Abstract model loader interface
-│   │   ├── concrete_models.py        # Hugging Face, PyTorch, TensorFlow loaders
-│   │   └── models_factory.py         # ModelLoaderFactory
-│   │
-│   ├── 📂 dataset/                   # Dataset loading and normalization (updated from 'datasets')
-│   │   ├── base_dataset_loader.py     # Abstract dataset loader interface
-│   │   ├── concrete_dataset_loader.py # Handles HF Hub, local, streaming, field normalization
-│   │   └── dataset_factory.py         # DatasetFactory
-│   │
-│   ├── 📂 prompting/                 # Prompt engineering and building
-│   │   ├── base_prompt_builder.py      # Abstract prompt builder interface
-│   │   ├── concrete_prompt_builders.py # TemplateBased, MMLU, Translation builders etc.
-│   │   └── prompt_builder_factory.py   # PromptBuilderFactory
-│   │
-│   ├── 📂 tasks/                     # Task-specific prompting and generation logic
-│   │   ├── base_task_handler.py       # Abstract task handler interface
-│   │   ├── concrete_task_handlers.py  # Handlers for various tasks (QA, Math, Summarization)
-│   │   └── task_handlers_factory.py   # TaskHandlerFactory
-│   │
-│   ├── 📂 postprocessing/             # Task-specific output post-processing
-│   │   ├── base_postprocessor.py       # Abstract post-processor interface
-│   │   ├── concrete_postprocessors.py  # Implementations for MMLU, GSM8K, etc.
-│   │   └── postprocessor_factory.py    # PostProcessorFactory
-│   │
-│   ├── 📂 evaluation/                 # Evaluation and metrics computation
-│   │   ├── evaluator.py                # Evaluator managing stateful metrics lifecycle
-│   │   └── 📂 metrics/                 # Metrics computation
-│   │       ├── base_metrics.py         # Abstract stateful metric interface (reset, update, result)
-│   │       ├── concrete_metrics.py     # Stateful implementations of various metrics
-│   │       └── metric_factory.py       # MetricFactory
-│   │
-│   └── 📂 reporting/                 # Results saving and reporting
-│       └── file_manager.py            # Saves results in JSON, CSV, PDF formats
-│
-├── 📂 scripts/                       # Execution entry points
-│   └── run_benchmark.py               # Main script to run benchmarks
-│
-├── 📂 utils/                         # Shared utilities
-│   └── logger.py                      # Unified logging system
-│
-├── config_models.py                  # Pydantic models for type-safe configuration
-└── generate_default_config.py         # Utility to generate a default configuration file
+├── 📦 visualize/                          # Visualization scripts and dashboard
+│   ├── dashboard.py                        # Streamlit dashboard application
+│   ├── data_utils.py                       # Utilities for dashboard data processing
+│   └── plotting_results.ipynb              # Jupyter notebook for plotting results
 ```
 
 ---
@@ -78,7 +83,7 @@ cd Benchmark-Gemma-Models
 ```bash
 pip install -r requirements.txt
 ```
-### 3. Setup Envinronment
+### 3. Setup Environment
 ```bash
 cd src
 python -m venv venv
@@ -94,6 +99,135 @@ python src/scripts/run_benchmark.py \
 ```
 
 ---
+
+## Examples & Getting Started
+
+### Quick Test with Colab
+A `hello_world.ipynb` notebook is provided at the root of the repository. It offers a simple way to clone the repository, install dependencies, and run a basic benchmark directly in a Google Colab environment. This is a great starting point for quickly testing the framework.
+
+### Generating a Default Configuration
+To get started with a base configuration, you can use the `generate_default_config.py` script located in the `src/` directory:
+
+```bash
+python src/generate_default_config.py
+```
+
+This will create a `default_benchmark_config.yaml` file in `src/config/` which you can then customize.
+
+### Visualizing Benchmark Results
+An interactive dashboard is available to explore the benchmark results.
+1.  Ensure you have run a benchmark and results are saved (e.g., in `benchmarks_output/benchmark_results.json`).
+2.  Run the Streamlit application:
+
+```bash
+streamlit run visualize/dashboard.py
+```
+
+This will launch the dashboard in your web browser. The `visualize/plotting_results.ipynb` notebook also contains examples of how benchmark data can be plotted programmatically.
+
+Here's a sneak peek of the dashboard in action:
+
+**Overall Dashboard Interface:**
+
+![Overall Dashboard Interface](img/Plots/dashboard.png)
+
+**Example: MMLU Exact Match Comparison Across Models:**
+
+![MMLU Exact Match](img/Plots/MMLU-exact-match.png)
+
+**Example: Toxicity for a Specific Task:**
+
+![Toxicy Metrics](img/Plots/Toxicity-gemma-7b-it.png)
+
+**Example: Metrics for a Specific Task (CNN/DailyMail with gemma-7b-it):**
+
+![CNN](img/Plots/CNN-gemma-7b-it.png)
+
+**Example: Model vs Model Comparison (Gemma 2b vs Gemma 7b-it):**
+
+![Model vs Model](img/Plots/OPUS-gemma-7b-it-vs-gemma-2b.png)
+
+### ⚠️ Important Disclaimer: Interpreting These Experimental Results ⚠️
+
+The benchmark results presented through this dashboard, along with any accompanying graphs, are **experimental** and have **not been rigorously validated against official leaderboards**. This is primarily due to computational limitations, as testing has been conducted using freely available resources (e.g., Google Colab's free-tier T4 GPU). These results are intended for **illustrative and demonstrative purposes only**, showcasing the framework’s capabilities and offering a preliminary look at model performance under constrained conditions.
+
+Please keep in mind the following factors related to these tests:
+
+- **Restricted Data Subsets:** Evaluations are typically performed on a **small subset** of examples from each dataset (e.g., around **500 examples per task**, not the full validation/test sets which may include thousands of samples).
+- **Quantized Models:** Models are often used in **quantized form** (e.g., 4-bit or 8-bit) to run on limited hardware.
+- **Basic Prompting:** Prompting strategies are designed to be functional but are **not heavily optimized** for each model or task.
+- **Generation Constraints:** Text generation is **capped** (e.g., 512 tokens for input, 150 for output) due to tokenizer and resource constraints.
+- **Simplified Post-processing:** Output post-processing is basic and may lack the **robustness or nuance** of official benchmarks.
+- **Hardware Limitations:** All benchmarks have been conducted using **a single T4 GPU on Google Colab Free Tier**.
+- **Metric Implementations:** Metrics are computed using standard libraries (`scikit-learn`, `nltk`, `rouge-score`, `bert-score`, Hugging Face `evaluate`). Versions and parameters may differ from those used in official evaluations. Some metrics (e.g., Toxicity) rely on specific pretrained models within Hugging Face pipelines.
+
+> **These results should not be taken as replacements for, or directly comparable to, official benchmark scores** published by model developers or evaluation organizations. They are meant to provide **preliminary insights** and to demonstrate the **modularity and flexibility** of the framework under resource-limited conditions.
+
+---
+
+## Configuring Benchmarks (`benchmark_config.yaml`)
+
+All benchmark experiments are defined in a YAML configuration file (e.g., `src/config/benchmark_config.yaml`). This file details the models, tasks, datasets, metrics, and runtime settings. You can generate a full default configuration using `python src/generate_default_config.py`.
+
+Here's a minimal example:
+
+```yaml
+general:
+  experiment_name: "Gemma_Benchmark_Comprehensive_2025"
+  output_dir: "./benchmarks_output"
+  random_seed: 42
+
+tasks:
+  - name: "MMLU (all Subset - Templated)"
+    type: "multiple_choice_qa"
+    datasets:
+      - name: "cais/mmlu"
+        source_type: "hf_hub"
+        config: "all"
+        split: "validation"
+        max_samples: 50
+    handler_options:
+      prompt_builder_type: "mmlu"
+      prompt_template: # Prompt template can be defined here
+    evaluation_metrics:
+      - name: exact_match
+        options: { normalize: true, ignore_case: true, ignore_punct: false }
+
+models:
+  - name: "gemma-2b"
+    checkpoint: "google/gemma-2b" # Or other models like phi-2, llama3
+    quantization: "4bit"
+
+model_parameters:
+  max_input_length: 512 
+  max_output_length: 512 
+
+evaluation:
+  log_interval: 5 
+
+reporting:
+  enabled: true
+  format: "json"
+  output_dir: "./reports"
+
+advanced:
+  batch_size: 10     
+  truncation: true    
+  padding: true       
+  generate_max_length: 512 
+  skip_special_tokens: true 
+  max_new_tokens: 150
+```
+
+**Key sections briefly:**
+* **`general`**: Experiment-wide settings.
+* **`tasks`**: List of tasks. Each specifies its `type`, `datasets` (with `max_samples`), `handler_options` (like `prompt_builder_type` and optional `prompt_template`), and `evaluation_metrics`.
+* **`models`**: List of models, detailing `checkpoint`, `quantization`, etc.
+* **`evaluation`**: Settings for the evaluation process (e.g., `log_interval`).
+* **`reporting`**: How to save results (e.g., `format`).
+* **`advanced`**: Global parameters for tokenization and generation (e.g., `batch_size`, `max_new_tokens`).
+
+**For the complete structure and all available options, please refer to `src/config/benchmark_config.yaml` or the file generated by `src/generate_default_config.py`.**
 
 ## Workflow Deep Dive
 
@@ -180,7 +314,8 @@ This structured pipeline ensures a reproducible, extensible, and efficient bench
 | `MetricFactory`           | A factory used by the `Evaluator` to create instances of `ConcreteMetric` classes.                                                        | `benchmark/evaluation/metrics/`     |
 | `ConcreteMetric`          | Implements specific evaluation metrics (e.g., Accuracy, ROUGE, ExactMatch, BLEU, BERTScore) with a stateful interface.                    | `benchmark/evaluation/metrics/`     |
 | `FileManager`             | Responsible for saving the final, aggregated benchmark results into various output formats like JSON, CSV, and PDF.                       | `benchmark/reporting/file_manager.py` |
-
+| `generate_default_config.py`| Utility script to generate a boilerplate `benchmark_config.yaml` file with default settings. | `src/`                                |
+| `dashboard.py`            | Streamlit application for interactive visualization of benchmark results.                                                                 | `visualize/`                          |
 ---
 
 ## Key Features
@@ -193,10 +328,15 @@ This benchmark suite is engineered from the ground up to provide a robust, flexi
         * **General Settings:** Experiment naming, output directories, random seeds.
         * **Model Parameters:** Specify LLMs (e.g., Gemma, Llama 2, Mistral), quantization (4-bit, 8-bit), offloading, and fine-tune generation arguments (`max_new_tokens`, `num_beams`, `temperature`, etc.).
         * **Dataset Specifications:** Define sources (Hugging Face Hub, local), splits, and streaming options.
-        * **Task Definitions:** Configure multiple tasks (e.g., MMLU, GSM8K, **Summarization**, **Translation**, Sentiment Analysis, Paraphrase Detection) with their specific types, and crucially, **customizable prompt templates and prompt builder types** via `handler_options`.
+        * **Task Definitions:** Configure multiple tasks (e.g., MMLU, GSM8K, **Summarization**, **Translation**, **GLUE tasks like SST-2, MRPC, STS-B**) with their specific types, and crucially, **customizable prompt templates and prompt builder types** via `handler_options`.
         * **Metric Choices:** Select a wide array of metrics and their specific options (e.g., normalization for ExactMatch, language for BERTScore, specific ROUGE types).
         * **Runtime Parameters:** Control `batch_size`, `truncation`, `padding`, and even settings for potential distributed training or specialized hardware (multi-GPU/TPU, though full support for these is a future step).
     * This centralized approach allows for complex experiment design and fine-tuning without altering the core codebase, ensuring reproducibility and ease of iteration.
+
+* **Versatile Reporting & Visualization:**
+    * The `FileManager` generates comprehensive benchmark results in multiple user-friendly formats: JSON (for machine readability), CSV (for data analysis in spreadsheets), and PDF (for shareable, human-readable reports).
+    * An interactive **Streamlit dashboard** (`visualize/dashboard.py`) allows for dynamic exploration, filtering, and comparison of benchmark results.
+    * The `visualize/plotting_results.ipynb` notebook provides further examples for programmatic result visualization.
 
 * **Highly Modular & Scalable "Factory-First" Architecture:**
     * The entire framework is built upon a modular design leveraging the **factory pattern** for all core components: `ModelLoaderFactory`, `DatasetFactory`, `PromptBuilderFactory`, `TaskHandlerFactory`, `PostProcessorFactory`, and `MetricFactory`.
@@ -229,8 +369,11 @@ This benchmark suite is engineered from the ground up to provide a robust, flexi
         * **Exact Matching:** ExactMatch with configurable normalization.
         * **Diversity & Content:** Distinct N-grams, Word Entropy.
         * **Task-Specific:** Metrics are chosen appropriately for each task type, ensuring relevant evaluation for MMLU, GSM8K, **Summarization**, **Translation**, and others.
+        **Metrics via Hugging Face Pipelines:** Includes metrics like Toxicity and potentially others that leverage pre-trained models through `transformers.pipeline`.
         * **And more**, all adapted for the stateful, batched flow.
     * Easily extendable with new custom metrics by adhering to the `BaseMetric` interface.
+
+* **Quick Configuration Setup:** Includes a `generate_default_config.py` script to quickly bootstrap a `benchmark_config.yaml` file with sensible defaults, making it easier to get started.
 
 * **Versatile Reporting:**
     * The `FileManager` generates comprehensive benchmark results in multiple user-friendly formats: JSON (for machine readability), CSV (for data analysis in spreadsheets), and PDF (for shareable, human-readable reports).
@@ -267,17 +410,15 @@ Our immediate focus is on further solidifying the framework and enhancing its co
 * **Enhance Generation Task Capabilities:**
     * Further enhance prompt engineering capabilities by extending the new prompting module (e.g., for dynamic few-shot example selection, complex template logic) to elicit optimal performance from different models.
     * Explore and integrate advanced, configurable generation techniques (e.g., beam search, diverse sampling methods like top-k/top-p, temperature control) as options within the `advanced` configuration section to allow for more controlled and varied model output during benchmarks.
-* **Improve Reporting & Usability:**
-    * Enhance the content, clarity, and visual appeal of generated PDF reports, potentially including more auto-generated charts summarizing key findings.
-    * Refine existing documentation, create new tutorials or example use-cases, and ensure all README sections accurately reflect the latest features for an even smoother user experience.
+* **Refine GLUE Task Prompts:** 
+    * Iterate on and improve the prompt engineering for GLUE tasks to optimize model performance and ensure reliable output parsing.
 * **Community Engagement & Continuous Feedback:**
     * Actively gather feedback from users and the broader AI/ML community to identify pain points, bugs, and desired features to guide future development.
     * Encourage and facilitate community contributions for new features, benchmarks, models, and metrics.
 
 ### Long-Term Vision / Ambitious Goals
-
 * **Advanced Visualization & Interactive Analysis:**
-    * Develop an interactive dashboard (e.g., using Streamlit or Gradio) for dynamic exploration, filtering, and comparison of benchmark results.
+    * Further enhance the existing Streamlit dashboard with more advanced analytical features, such as detailed error analysis, longitudinal performance tracking (if a database backend is added), and more sophisticated comparative views.
 * **Simplified Cloud Execution & Scalability:**
     * Provide guidance, helper scripts, or investigate lightweight integrations for running benchmarks more easily on common cloud GPU platforms (e.g., Google Colab Pro, Kaggle Kernels, AWS SageMaker, GCP Vertex AI).
     * (Stretch) Explore options for distributed evaluation across multiple nodes for very large-scale experiments.
@@ -285,5 +426,33 @@ Our immediate focus is on further solidifying the framework and enhancing its co
     * Implement an optional database backend (e.g., SQLite, PostgreSQL) to store, query, and analyze benchmark results over time, enabling tracking of model progress, regressions, and historical comparisons.
 * **Broader Model & Framework Support:**
     * Continuously expand native support for new and emerging LLM architectures and model serving frameworks if community demand arises.
+
+---
+
+## License and Important Disclaimers
+
+**Project License:**
+
+This project, Benchmark-Gemma-Models, is released under the **Apache 2.0 License**. You can find the full license text in the `LICENSE` file in the root of this repository.
+
+**Nature of Benchmark Results:**
+
+All benchmark results provided by or visualized through this framework are for **research, illustrative, and demonstrative purposes only.** They are generated under specific, resource-constrained conditions (often using quantized models, small data subsets, limited prompting, and basic post-processing on hardware like Google Colab's free T4 GPU tier) and **have not been rigorously validated against official leaderboards.**
+
+* **No Guarantees:** The maintainers of this project are not responsible for any decisions made or actions taken based on these experimental results. Users are solely responsible for interpreting and using any outputs.
+* **Experimental Data:** For a detailed understanding of the experimental conditions and limitations affecting the presented results, please see the "Important Disclaimer: Interpreting These Experimental Results" section [*(Link alla sezione del disclaimer sui risultati, se è separata)*] or refer to the notes accompanying any visualized data.
+
+**Models Used and Third-Party License Compliance:**
+
+This framework provides tools and scripts to evaluate third-party language models. It **does not distribute these models directly.** Users are responsible for obtaining access to these models and ensuring full compliance with their respective terms of use, licenses, and any applicable usage restrictions. Key model providers include, but are not limited to:
+
+* **Google Gemma:** Subject to [Google Gemma Terms of Use](https://ai.google.dev/gemma/terms) and the [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy).
+* **Mistral Models:** Subject to the terms provided by Mistral AI (e.g., [Mistral AI Technology](https://mistral.ai/terms#terms-of-service)).
+* **Meta LLaMA Models:** Subject to the [Meta LLaMA License](https://ai.meta.com/llama/license/).
+* **Any other models used in this framework** are subject to their respective licenses and terms, which users must review and comply with prior to use.
+
+**No Affiliation or Endorsement:**
+
+This project is an independent initiative and is not affiliated with, sponsored by, or endorsed by Google, Mistral AI, Meta Platforms, Inc., or any other third-party model provider. All product names, logos, and brands are property of their respective owners.
 
 ---

@@ -1,0 +1,78 @@
+# ============================
+# General Configuration
+# ============================
+general:
+  experiment_name: "Gemma_Benchmark_Comprehensive_2025"
+  output_dir: "./benchmarks_output"
+  random_seed: 42
+
+# ============================
+# Benchmark Tasks Configuration
+# ============================
+tasks:
+  # --- Task 1: MMLU (Multiple Choice QA) ---
+  - name: "MMLU (all Subset - Templated)"
+    type: "multiple_choice_qa"
+    datasets:
+      - name: "cais/mmlu"
+        source_type: "hf_hub"
+        config: "all"
+        split: "validation"
+        max_samples: 50
+    handler_options:
+      prompt_builder_type: "mmlu"
+      prompt_template: |
+        Answer the following multiple-choice question about {subject} by providing only the letter of the correct option.
+        Question: {question}
+        Choices:
+        {choices_formatted_str}
+        Your answer (select one letter from A, B, C, D, etc.):
+      default_subject: "the following topic"
+    evaluation_metrics:
+      - name: exact_match
+        options: { normalize: true, ignore_case: true, ignore_punct: false }
+
+# ============================
+# Models Configuration
+# ============================
+models:
+  - name: "gemma-2b"
+    checkpoint: "google/gemma-2b"
+    quantization: "4bit"
+
+# ============================
+# Model Parameters Configuration (Global for model loading, not generation)
+# ============================
+model_parameters:
+  max_input_length: 512 
+  max_output_length: 512 
+
+# ============================
+# Evaluation Configuration
+# ============================
+evaluation:
+  log_interval: 5 
+
+# ============================
+# Results and Reporting
+# ============================
+reporting:
+  enabled: true
+  format: "json"
+  leaderboard_enabled: false
+  generate_visuals:
+    charts: true
+    tables: true
+    save_plots: true
+  output_dir: "./reports"
+
+# ============================
+# Advanced Settings (Global runtime/generation parameters for TaskHandlers)
+# ============================
+advanced:
+  batch_size: 10     
+  truncation: true    
+  padding: true       
+  generate_max_length: 512 
+  skip_special_tokens: true 
+  max_new_tokens: 150

@@ -58,6 +58,7 @@ def generate_bar_chart(
         num_x_categories = len(df_plot_valid[x_col].unique())
         base_height = 400
         height = base_height + num_x_categories * 30
+        height = min(height, 600)
         if color_col and color_col in df_plot_valid.columns:
             height += len(df_plot_valid[color_col].unique()) * 10
 
