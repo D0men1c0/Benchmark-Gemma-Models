@@ -42,23 +42,23 @@ def load_simple_csv_data(split: str,
         return None
 
 def load_multi_split_csv_from_dir(split: str, 
-                                  data_path: str, # Path to the directory containing split CSVs
+                                  data_file_path: str, # Path to the directory containing split CSVs
                                   script_args: Optional[Dict[str, Any]] = None) -> Union[Dataset, DatasetDict, None]:
     """
     Loads data from CSV files named like 'train.csv', 'validation.csv' in a directory.
-    'data_path' is the directory, passed from 'data_dir' in YAML.
+    'data_file_path' is the directory, passed from 'data_dir' in YAML.
     'split' determines which CSV to load or if 'all' load a DatasetDict.
     This function is called by CustomScriptDatasetLoader.
     :param split: The split name (e.g., 'train', 'validation', 'test', or 'all').
-    :param data_path: Directory containing the CSV files.
+    :param data_file_path: Directory containing the CSV files.
     :param script_args: Additional arguments passed from the YAML configuration.
     :return: A Hugging Face Dataset or DatasetDict.
     """
     if script_args is None:
         script_args = {}
 
-    logger.info(f"load_multi_split_csv_from_dir called for split: '{split}', dir: '{data_path}'")
-    base_data_dir = Path(data_path)
+    logger.info(f"load_multi_split_csv_from_dir called for split: '{split}', dir: '{data_file_path}'")
+    base_data_dir = Path(data_file_path)
 
     if split.lower() == "all":
         all_datasets = {}
