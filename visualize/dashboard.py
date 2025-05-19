@@ -250,59 +250,161 @@ with tab3:
 with tab4:
     st.subheader("⚔️ Model vs Model Comparison")
 
-    if not available_models or not available_tasks or not available_metrics:
-        st.info("Ensure models, tasks, and metrics are available for comparison.")
+    if not current_models or len(current_models) < 1: # Need at least one model to select from, ideally 2
+        st.info("Not enough models available after global filters for comparison. Please select at least two models globally.")
+    elif not current_tasks:
+        st.info("No tasks available after global filters for comparison.")
     else:
-        col1, col2 = st.columns(2)
-        score_m1, score_m2 = None, None
-        data_m1_exists = data_m2_exists = False
+        col1_select, col2_select = st.columns(2)
+        with col1_select:
+            model1_choice = st.selectbox(
+                "Select Model 1:",
+                current_models,
+                index=0 if current_models else -1,
+                key="mvm_model1_select"
+            )
+        with col2_select:
+            # Ensure Model 2 options don't include Model 1 for a true MvM, or allow same model for sanity check
+            model2_options = [m for m in current_models if m != model1_choice] if len(current_models) > 1 and model1_choice else current_models
+            if not model2_options and current_models: # If only one model selected globally, or model1 is the only one
+                 model2_options = current_models 
+            
+            model2_choice = st.selectbox(
+                "Select Model 2:",
+                model2_options,
+                index=0 if len(model2_options) > 0 else -1, # Default to first option if available
+                key="mvm_model2_select"
+            )
 
-        def get_score(model, task, metric, label):
-            st.markdown(f"##### {label}")
-            model_choice = st.selectbox("Select Model:", available_models, key=f"{label}_model")
-            task_choice = st.selectbox("Select Task:", current_tasks, key=f"{label}_task")
-            metric_choice = st.selectbox("Select Metric:", current_metrics, key=f"{label}_metric")
-            score = None
-            exists = False
+        # Select a common task for comparison
+        # For simplicity, use all 'current_tasks'. The logic will handle if data exists.
+        common_task_choice = st.selectbox(
+            "Select Common Task for Comparison:",
+            current_tasks,
+            index=0 if current_tasks else -1,
+            key="mvm_task_select"
+        )
 
-            if model_choice and task_choice and metric_choice:
-                data = df_to_display[
-                    (df_to_display['model'] == model_choice) &
-                    (df_to_display['task'] == task_choice) &
-                    (df_to_display['full_metric_name'] == metric_choice)
-                ]
-                if not data.empty:
-                    score = data['score'].iloc[0]
-                    st.metric(label=f"{metric_choice} (on {task_choice})", value=f"{score:.4f}")
-                    exists = True
-                else:
-                    st.warning(f"No data for {label} with the current selection.")
-            else:
-                st.caption(f"Select model, task, and metric for {label}.")
+        if not model1_choice or not model2_choice or not common_task_choice:
+            st.info("Please select two models and a common task.")
+        else:
+            # Get metrics relevant to the chosen common task for these two models
+            metrics_for_task_model1 = sorted(df_to_display[
+                (df_to_display['model'] == model1_choice) &
+                (df_to_display['task'] == common_task_choice)
+            ]['full_metric_name'].unique())
+            
+            metrics_for_task_model2 = sorted(df_to_display[
+                (df_to_display['model'] == model2_choice) &
+                (df_to_display['task'] == common_task_choice)
+            ]['full_metric_name'].unique())
 
-            return model_choice, task_choice, metric_choice, score, exists
+            # Find common metrics available for both models on that task
+            common_metrics_for_selection = sorted(list(set(metrics_for_task_model1) & set(metrics_for_task_model2)))
+            common_metrics_for_selection = [m for m in common_metrics_for_selection if m not in ["processing_error", "error", None, "None_None"] and pd.notna(m)]
 
-        with col1:
-            model1, task1, metric1, score_m1, data_m1_exists = get_score("model1", "task1", "metric1", "Model 1")
-        with col2:
-            model2, task2, metric2, score_m2, data_m2_exists = get_score("model2", "task2", "metric2", "Model 2")
 
-        if data_m1_exists and data_m2_exists:
-            if task1 == task2 and metric1 == metric2:
+            metric_options = ["Compare ALL Metrics for this Task"] + common_metrics_for_selection
+            
+            metric_to_compare = st.selectbox(
+                "Select Metric for Comparison (or 'ALL'):",
+                metric_options,
+                index=0 if metric_options else -1, # Default to "ALL" if available
+                key="mvm_metric_select"
+            )
+
+            if metric_to_compare:
                 st.markdown("---")
-                st.markdown(f"##### Comparison Chart: '{task1}' - Metric '{metric1}'")
+                
+                if metric_to_compare == "Compare ALL Metrics for this Task":
+                    st.markdown(f"##### Comparing '{model1_choice}' vs '{model2_choice}' on ALL Metrics for Task: '{common_task_choice}'")
+                    
+                    data_m1 = df_to_display[
+                        (df_to_display['model'] == model1_choice) &
+                        (df_to_display['task'] == common_task_choice) &
+                        (df_to_display['full_metric_name'].isin(common_metrics_for_selection)) # Use common available metrics
+                    ]
+                    data_m2 = df_to_display[
+                        (df_to_display['model'] == model2_choice) &
+                        (df_to_display['task'] == common_task_choice) &
+                        (df_to_display['full_metric_name'].isin(common_metrics_for_selection))
+                    ]
+                    
+                    if data_m1.empty and data_m2.empty:
+                        st.warning(f"No data found for either model on task '{common_task_choice}' for the available metrics.")
+                    else:
+                        comparison_df_all_metrics = pd.concat([data_m1, data_m2])
+                        if not comparison_df_all_metrics.empty:
+                            fig = generate_bar_chart(
+                                df_plot=comparison_df_all_metrics,
+                                x_col='full_metric_name',
+                                y_col='score',
+                                color_col='model',
+                                title=f"All Metrics: '{model1_choice}' vs '{model2_choice}' on '{common_task_choice}'",
+                                barmode='group',
+                                x_label_override="Metric",
+                                height = 600 + len(common_metrics_for_selection) * 20 # Adjust height based on number of metrics
+                            )
+                            if fig:
+                                st.plotly_chart(fig, use_container_width=True)
+                            else:
+                                st.info("Could not generate comparison chart for all metrics.")
+                        else:
+                            st.info("No common data to compare for all metrics.")
 
-                df_compare = pd.DataFrame({
-                    'Model': [model1, model2],
-                    'Score': [score_m1, score_m2]
-                })
+                else: # Specific metric selected
+                    st.markdown(f"##### Comparing '{model1_choice}' vs '{model2_choice}' on Metric: '{metric_to_compare}' for Task: '{common_task_choice}'")
 
-                fig = px.bar(df_compare, x='Model', y='Score', color='Model', text_auto='.4f',
-                             title=f"Comparison: {model1} vs {model2}")
-                fig.update_layout(xaxis_title="Selected Model", yaxis_title="Score", showlegend=True)
-                st.plotly_chart(fig, use_container_width=True)
+                    score_m1_data = df_to_display[
+                        (df_to_display['model'] == model1_choice) &
+                        (df_to_display['task'] == common_task_choice) &
+                        (df_to_display['full_metric_name'] == metric_to_compare)
+                    ]
+                    score_m2_data = df_to_display[
+                        (df_to_display['model'] == model2_choice) &
+                        (df_to_display['task'] == common_task_choice) &
+                        (df_to_display['full_metric_name'] == metric_to_compare)
+                    ]
+
+                    score_m1 = score_m1_data['score'].iloc[0] if not score_m1_data.empty else None
+                    score_m2 = score_m2_data['score'].iloc[0] if not score_m2_data.empty else None
+
+                    # Display individual scores using st.metric
+                    cols_scores = st.columns(2)
+                    with cols_scores[0]:
+                        if score_m1 is not None:
+                            st.metric(label=f"{model1_choice}: {metric_to_compare}", value=f"{score_m1:.4f}")
+                        else:
+                            st.caption(f"No score for {model1_choice} on this metric/task.")
+                    with cols_scores[1]:
+                        if score_m2 is not None:
+                            st.metric(label=f"{model2_choice}: {metric_to_compare}", value=f"{score_m2:.4f}")
+                        else:
+                            st.caption(f"No score for {model2_choice} on this metric/task.")
+                    
+                    if score_m1 is not None and score_m2 is not None:
+                        df_compare_single_metric = pd.DataFrame({
+                            'Model': [model1_choice, model2_choice],
+                            'Score': [score_m1, score_m2]
+                        })
+                        fig = generate_bar_chart(
+                            df_plot=df_compare_single_metric,
+                            x_col='Model',
+                            y_col='Score',
+                            color_col='Model', # Colors bars by model name
+                            title=f"Comparison on '{metric_to_compare}' for task '{common_task_choice}'",
+                            barmode='group' # or 'overlay' if preferred and only 2 bars
+                        )
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("Could not generate comparison chart for the selected metric.")
+                    elif score_m1 is None and score_m2 is None:
+                        st.warning("No data available for either model on the selected task/metric.")
+                    else:
+                        st.info("Data available for only one model. Direct comparison chart not shown.")
             else:
-                st.info("To view a direct comparison chart, please select the same Task and Metric for both models.")
+                st.info("Please select a metric or 'ALL' to proceed.")
 
 # Tab 5: Heatmap
 with tab5:

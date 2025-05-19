@@ -1480,7 +1480,7 @@
             "spearman_correlation": 0.0
         }
     },
-    "gemma-2-2b-it - 8quant": {
+    "gemma-2b-it - 8quant": {
         "MMLU (all Subset - Templated)": {
             "exact_match": 0.52,
             "accuracy": 0.52,
