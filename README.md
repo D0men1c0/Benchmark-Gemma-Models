@@ -195,6 +195,7 @@ tasks:
 
 models:
   - name: "gemma-2b"
+    framework: "huggingface"
     checkpoint: "google/gemma-2b" # Or other models like phi-2, llama3
     quantization: "4bit"
 

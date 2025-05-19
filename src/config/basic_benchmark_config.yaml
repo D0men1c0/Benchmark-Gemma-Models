@@ -37,6 +37,7 @@ tasks:
 # ============================
 models:
   - name: "gemma-2b"
+    framework: "huggingface"
     checkpoint: "google/gemma-2b"
     quantization: "4bit"
 
@@ -59,11 +60,6 @@ evaluation:
 reporting:
   enabled: true
   format: "json"
-  leaderboard_enabled: false
-  generate_visuals:
-    charts: true
-    tables: true
-    save_plots: true
   output_dir: "./reports"
 
 # ============================
