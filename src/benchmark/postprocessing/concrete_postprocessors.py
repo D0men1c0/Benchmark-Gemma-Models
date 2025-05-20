@@ -9,6 +9,7 @@ logger = setup_logger(__name__)
 
 # --- Helper Functions (can stay here or move to a shared utils file) ---
 
+# Previous functions not used in the concrete postprocessors
 def _extract_mmlu_prediction(generated_text: str) -> str:
     """
     Extracts the first valid A, B, C, or D letter from the prediction.
@@ -27,6 +28,52 @@ def _extract_mmlu_prediction(generated_text: str) -> str:
             return char
     return "INVALID_PRED" # Default if nothing is found
 
+def _extract_mmlu_choice_enhanced(generated_text: str, options: str = "ABCD") -> str:
+    if not generated_text:
+        return "INVALID_PRED"
+
+    text_upper = generated_text.strip().upper()
+    valid_options_set = set(list(options))
+
+    explicit_answer_patterns = [
+        rf"(?:THE\s+CORRECT\s+ANSWER\s+IS|THE\s+ANSWER\s+IS|ANSWER:|CORRECT\s+OPTION:|OPTION:)\s*\(?([{options}])\)?", # Check for (A), (B), etc.
+        rf"CORRECT\s+IS\s+([{options}])", # Check for CORRECT IS A, B, etc.
+        rf"IS:\s*([{options}])" # Check for IS: A, B, etc.
+    ]
+
+    # Check for explicit answer patterns
+    for pattern in explicit_answer_patterns:
+        match = re.search(pattern, text_upper)
+        if match:
+            return match.group(1)
+
+    formatted_patterns = [
+        rf"\(([{options}])\)", # Check for (A), (B), etc.
+        rf"\b([{options}])\)", # Check for A), B), etc.
+        rf"\b([{options}])\.", # Check for A., B., etc.
+        rf"\b([{options}])\b"  # Check for A, B, etc.     
+    ]
+    
+    last_found_match = None
+    best_match_pos = -1
+
+    # Find the first match in the text
+    for pattern in formatted_patterns:
+        for m in re.finditer(pattern, text_upper):
+            if m.start() > best_match_pos: # Only consider the first match in the text
+                best_match_pos = m.start()
+                last_found_match = m.group(1)
+    
+    if last_found_match:
+        return last_found_match
+
+    # Fallback: find the first A,B,C,D character anywhere
+    for char in text_upper:
+        if char in valid_options_set:
+            return char
+            
+    return "INVALID_PRED"
+
 def _convert_mmlu_label(label_index: Any) -> str:
     """
     Converts MMLU index (0-3) to the corresponding letter.
@@ -40,6 +87,7 @@ def _convert_mmlu_label(label_index: Any) -> str:
     except (ValueError, TypeError):
         return "INVALID_LABEL"
 
+# Previous functions not used in the concrete postprocessors
 def _extract_gsm8k_answer(text: str) -> str:
     """
     Extracts the final numerical answer from a GSM8K string.
@@ -60,6 +108,65 @@ def _extract_gsm8k_answer(text: str) -> str:
         except ValueError:
             return "INVALID_NUM_FORMAT"
     return "ANSWER_NOT_FOUND" # Default if pattern is not found
+
+def _extract_gsm8k_final_answer_enhanced(generated_text: str) -> str:
+    """
+    Extracts the final answer from the generated text.
+    :param generated_text: The generated text from the model.
+    :return: The final number found in the text, cleaned of commas.
+             If no valid number is found, returns "ANSWER_NOT_FOUND".
+             If the number format is invalid, returns "INVALID_NUM_FORMAT_IN_HASH_PATTERN".
+    """
+    if not generated_text:
+        return "ANSWER_NOT_FOUND"
+
+    text = generated_text.strip()
+
+    matches = list(re.finditer(r"####\s*([\d,.-]+)", text))
+    if matches:
+        last_match = matches[-1]
+        num_str = last_match.group(1).replace(',', '')
+        try:
+            float(num_str)
+            return num_str
+        except ValueError:
+            return "INVALID_NUM_FORMAT_IN_HASH_PATTERN"
+
+    answer_phrases = [
+        r"the final answer is",
+        r"the answer is",
+        r"so the result is",
+        r"which gives us",
+        r"is equal to"
+    ]
+    
+    best_fallback_num_str = None
+    for phrase in answer_phrases:
+        phrase_matches = list(re.finditer(rf"{phrase}\s*:?\s*([-+]?\s*[\d,.]+\d)", text, re.IGNORECASE))
+        if phrase_matches:
+            last_phrase_match = phrase_matches[-1]
+            num_str_candidate = last_phrase_match.group(1).replace(',', '').replace(' ', '')
+            try:
+                float(num_str_candidate)
+                best_fallback_num_str = num_str_candidate
+                break
+            except ValueError:
+                continue
+
+    if best_fallback_num_str:
+        return best_fallback_num_str
+
+    potential_numbers = re.findall(r"[-+]?\b\d[\d,.]*\b", text)
+    if potential_numbers:
+        last_num_str = potential_numbers[-1].replace(',', '')
+        try:
+            float(last_num_str)
+            return last_num_str
+        except ValueError:
+            pass
+
+    return "ANSWER_NOT_FOUND"
+
 
 # --- Concrete Classes ---
 
@@ -89,7 +196,7 @@ class MMLUPostProcessor(BasePostProcessor):
         :return: Tuple of (processed_predictions, processed_labels).
                     Predictions are cleaned to extract the first valid letter (A, B, C, or D).
         """
-        processed_predictions = [_extract_mmlu_prediction(text) for text in predictions]
+        processed_predictions = [_extract_mmlu_choice_enhanced(text) for text in predictions]
         processed_labels = [_convert_mmlu_label(label_idx) for label_idx in labels]
         return processed_predictions, processed_labels
 
@@ -105,8 +212,8 @@ class GSM8KPostProcessor(BasePostProcessor):
                     Predictions are cleaned to extract the final number.
         """
         # Extracts only the final number from both predictions and labels
-        processed_predictions = [_extract_gsm8k_answer(text) for text in predictions]
-        processed_labels = [_extract_gsm8k_answer(str(label)) for label in labels] # Ensure label is string
+        processed_predictions = [_extract_gsm8k_final_answer_enhanced(text) for text in predictions]
+        processed_labels = [_extract_gsm8k_final_answer_enhanced(str(label)) for label in labels] # Ensure label is string
         return processed_predictions, processed_labels
 
 class SummarizationPostProcessor(DefaultPostProcessor):
