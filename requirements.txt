@@ -23,3 +23,5 @@ python-dotenv==1.0.1
 pyyaml==6.0.2
 pydantic==2.11.3
 rouge==1.0.1
+tensorflow==2.19.0
+tf-keras==2.19.0

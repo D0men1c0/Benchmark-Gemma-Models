@@ -48,6 +48,9 @@ class DatasetConfig(BaseModel):
     dataset_specific_fields: Optional[Dict[str, str]] = None
     loader_args: Dict[str, Any] = Field(default_factory=dict)
     max_samples: Optional[int] = None
+    script_path: Optional[str] = None
+    function_name: Optional[str] = None
+    script_args: Optional[Dict[str, Any]] = None
 
 class MetricConfig(BaseModel):
     # Configuration for evaluation metrics
@@ -77,6 +80,10 @@ class ModelConfig(BaseModel):
     quantization: Optional[str] = None
     offloading: Optional[bool] = None
     torch_dtype: Optional[Literal["float16", "float32", "bfloat16"]] = None
+    script_path: Optional[str] = None
+    function_name: Optional[str] = None
+    script_args: Optional[Dict[str, Any]] = None
+    torch_dtype_str: Optional[str] = None 
 
 class ModelParamsConfig(BaseModel):
     # Configuration for model parameters

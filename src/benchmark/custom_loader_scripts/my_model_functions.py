@@ -37,24 +37,28 @@ def load_local_hf_model_example(
     logger.info(f"  Model Load Args: {model_load_args}")
     logger.info(f"  Other Script Args: {kwargs}")
 
-    if not Path(model_path).exists():
-        raise FileNotFoundError(f"Model path does not exist: {model_path}")
+    is_local_path = Path(model_path).is_dir() # Controlla se è una directory esistente
+    if is_local_path:
+        logger.info(f"  Interpreting '{model_path}' as a local directory path.")
+    else:
+        logger.info(f"  Interpreting '{model_path}' as a Hugging Face Hub model ID (or a path that will be resolved by HF).")
 
     actual_tokenizer_path = tokenizer_name_or_path if tokenizer_name_or_path else model_path
 
-    # --- Tokenizer Loading ---
     try:
-        tokenizer = AutoTokenizer.from_pretrained(actual_tokenizer_path, trust_remote_code=True)
+        tokenizer_trust_remote_code = model_load_args.get("trust_remote_code", True) if model_load_args else True
+        tokenizer = AutoTokenizer.from_pretrained(actual_tokenizer_path, trust_remote_code=tokenizer_trust_remote_code)
         logger.info(f"Tokenizer loaded from: {actual_tokenizer_path}")
     except Exception as e:
         logger.error(f"Error loading tokenizer from {actual_tokenizer_path}: {e}")
         raise
 
-    # --- Model Loading Parameters ---
     effective_model_load_args = model_load_args.copy() if model_load_args else {}
+    if "trust_remote_code" not in effective_model_load_args:
+         effective_model_load_args["trust_remote_code"] = True
 
-    # 1. Determine torch_dtype
-    actual_torch_dtype = torch.float32 # Default
+
+    actual_torch_dtype = torch.float32
     if torch_dtype_str:
         if torch_dtype_str.lower() == "bfloat16":
             if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
@@ -68,42 +72,38 @@ def load_local_hf_model_example(
         else:
             logger.warning(f"Warning: Unrecognized torch_dtype_str '{torch_dtype_str}', defaulting to float32.")
     
-    # Only set torch_dtype in args if not using bitsandbytes or if it's for compute_dtype
-    if quantization not in ["4bit", "8bit"] or (quantization == "4bit" and actual_torch_dtype):
-         if actual_torch_dtype: # Ensure it's not None if we are setting it
-            effective_model_load_args["torch_dtype"] = actual_torch_dtype
-
-
-    # 2. Handle Quantization with BitsAndBytesConfig
     if quantization == "4bit":
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=actual_torch_dtype, # Crucial for 4-bit
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=actual_torch_dtype,
+            bnb_4bit_quant_type=effective_model_load_args.pop("bnb_4bit_quant_type", "nf4"),
+            bnb_4bit_use_double_quant=effective_model_load_args.pop("bnb_4bit_use_double_quant", True),
         )
         effective_model_load_args["quantization_config"] = bnb_config
-        effective_model_load_args["device_map"] = device_map # Bitsandbytes needs device_map
-        logger.info(f"Configured for 4-bit quantization with compute dtype: {actual_torch_dtype}, device_map: {device_map}")
+        if "device_map" not in effective_model_load_args:
+             effective_model_load_args["device_map"] = device_map 
+        logger.info(f"Configured for 4-bit quantization. Compute dtype: {actual_torch_dtype}, device_map: {effective_model_load_args['device_map']}")
     elif quantization == "8bit":
         bnb_config = BitsAndBytesConfig(load_in_8bit=True)
         effective_model_load_args["quantization_config"] = bnb_config
-        effective_model_load_args["device_map"] = device_map # Bitsandbytes needs device_map
-        logger.info(f"Configured for 8-bit quantization, device_map: {device_map}")
+        if "device_map" not in effective_model_load_args:
+             effective_model_load_args["device_map"] = device_map
+        logger.info(f"Configured for 8-bit quantization. device_map: {effective_model_load_args['device_map']}")
     elif quantization is None:
-        # If not using bitsandbytes quantization, device_map is still good for large models
-        if "device_map" not in effective_model_load_args: # Respect if user passed it in model_load_args
+        if "device_map" not in effective_model_load_args:
             effective_model_load_args["device_map"] = device_map
-        logger.info(f"No bitsandbytes quantization. Device_map: {effective_model_load_args.get('device_map')}")
+        if actual_torch_dtype != torch.float32 or torch_dtype_str == "float32":
+            effective_model_load_args["torch_dtype"] = actual_torch_dtype
+        logger.info(f"No bitsandbytes quantization. device_map: {effective_model_load_args.get('device_map')}, torch_dtype: {effective_model_load_args.get('torch_dtype')}")
     else:
         logger.warning(f"Warning: Quantization type '{quantization}' not explicitly handled by this script's bitsandbytes setup.")
+        if "device_map" not in effective_model_load_args: # Fallback device_map
+            effective_model_load_args["device_map"] = device_map
 
-    # --- Model Loading ---
     try:
         logger.info(f"Loading model from '{model_path}' with args: {effective_model_load_args}")
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            trust_remote_code=True,
             **effective_model_load_args
         )
         logger.info(f"Model loaded successfully from: {model_path}")

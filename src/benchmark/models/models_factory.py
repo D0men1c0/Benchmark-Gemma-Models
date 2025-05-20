@@ -1,7 +1,7 @@
 from typing import Any, Optional, Type, Dict
 
 from .base_model_loader import BaseModelLoader
-from .concrete_models import HuggingFaceModelLoader, PyTorchModelLoader, TensorFlowModelLoader
+from .concrete_models import HuggingFaceModelLoader, PyTorchModelLoader, TensorFlowModelLoader, CustomScriptModelLoader
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -13,7 +13,8 @@ class ModelLoaderFactory:
     _LOADER_REGISTRY: Dict[str, Type[BaseModelLoader]] = {
         "huggingface": HuggingFaceModelLoader,
         "pytorch": PyTorchModelLoader,
-        "tensorflow": TensorFlowModelLoader
+        "tensorflow": TensorFlowModelLoader,
+        "custom_script": CustomScriptModelLoader,
     }
 
     @classmethod
@@ -32,7 +33,8 @@ class ModelLoaderFactory:
         model_name: str,
         framework: str,
         quantization: Optional[str] = None,
-        **kwargs: Any
+        model_specific_config_params: Optional[Dict[str, Any]] = None,
+        global_model_creation_params: Optional[Dict[str, Any]] = None
     ) -> BaseModelLoader:
         """
         Get initialized model loader with case-insensitive lookup.
@@ -53,8 +55,35 @@ class ModelLoaderFactory:
                 f"Available options: {available}"
             )
         
-        return loader_class(
-            model_name=model_name,
-            quantization=quantization,
-            **kwargs
-        )
+        effective_kwargs: Dict[str, Any] = {}
+        if global_model_creation_params:
+            effective_kwargs.update(global_model_creation_params)
+        if model_specific_config_params:
+            effective_kwargs.update(model_specific_config_params)
+
+        effective_kwargs.pop('name', None)
+        effective_kwargs.pop('framework', None)
+        effective_kwargs.pop('model_name', None)
+        effective_kwargs.pop('size', None)
+        effective_kwargs.pop('model_type', None)
+        effective_kwargs.pop('variant', None)
+
+        if loader_class == CustomScriptModelLoader:
+            logger.debug(f"Instantiating CustomScriptModelLoader for '{model_name}' with effective_kwargs: {list(effective_kwargs.keys())}")
+            return loader_class(
+                model_name=model_name,
+                framework=framework,
+                **effective_kwargs
+            )
+        else:
+            if quantization is not None:
+                effective_kwargs['quantization'] = quantization
+            else:
+                pass
+            
+            effective_kwargs.pop('checkpoint', None)
+            logger.debug(f"Instantiating {loader_class.__name__} for '{model_name}' with effective_kwargs: {list(effective_kwargs.keys())}")
+            return loader_class(
+                model_name=model_name,
+                **effective_kwargs
+            )
