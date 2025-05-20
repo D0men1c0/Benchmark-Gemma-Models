@@ -1,5 +1,7 @@
+import importlib
+from pathlib import Path
 import re
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List
 from .base_postprocessor import BasePostProcessor
 from utils.logger import setup_logger
 
@@ -220,3 +222,123 @@ class GlueSTSBOutputPostProcessor(BasePostProcessor):
                 logger.warning(f"STSB PostProcessor: Could not convert label '{l}' to float. Defaulting.")
                 processed_labels.append(default_invalid_score)
         return processed_predictions, processed_labels
+    
+
+class CreativeTextPostProcessor(BasePostProcessor):
+    """
+    Post-processor for outputs from creative text generation tasks.
+    Example: counts words and removes excessive newlines.
+    """
+    def process(self, predictions: List[str], labels: List[Any], batch: Dict[str, Any] = None) -> Tuple[List[Dict[str, Any]], List[Any]]:
+        """
+        Processes creative text predictions.
+
+        :param predictions: Raw generated text from the model for the batch.
+        :param labels: Raw labels (referencetexts) from the dataset batch. Può essere una lista di None.
+        :param batch: The original batch data (optional).
+        :return: Tuple of (processed_predictions, processed_labels).
+                 processed_predictions qui sarà una lista di dizionari,
+                 ognuno contenente il testo pulito e il conteggio parole.
+                 processed_labels rimangono i testi di riferimento.
+        """
+        processed_predictions_list = []
+        for pred_text in predictions:
+            if pred_text is None:
+                processed_predictions_list.append({"cleaned_text": "", "word_count": 0, "original_text": None})
+                continue
+
+            cleaned_text = str(pred_text).strip()
+            cleaned_text = " ".join(cleaned_text.split())
+            cleaned_text = cleaned_text.replace("\n ", "\n").replace(" \n", "\n")
+            
+            cleaned_text = re.sub(r'\n\s*\n', '\n\nPARA_BREAK\n\n', cleaned_text)
+            cleaned_text = re.sub(r'\s*\n\s*', ' ', cleaned_text)
+            cleaned_text = cleaned_text.replace('\n\nPARA_BREAK\n\n', '\n\n')
+
+
+            word_count = len(cleaned_text.split())
+            
+            processed_predictions_list.append({
+                "cleaned_text": cleaned_text,
+                "word_count": word_count,
+                "original_text": pred_text
+            })
+        
+        processed_labels = [str(l) if l is not None else None for l in labels]
+
+        return processed_predictions_list, processed_labels
+    
+    
+class CustomScriptPostProcessor(BasePostProcessor):
+    """
+    A post-processor that delegates its logic to a user-defined function
+    in an external Python script.
+    """
+    def __init__(self, script_path: Optional[str] = None, 
+                 function_name: Optional[str] = None, 
+                 script_args: Optional[Dict[str, Any]] = None):
+        """
+        :param script_path: Path to the Python script containing the custom function.
+        :param function_name: Name of the function to call in the script.
+        :param script_args: Additional arguments to pass to the custom function.
+        """
+        super().__init__()
+        self.script_path_str = script_path
+        self.function_name = function_name
+        self.script_args = script_args if script_args is not None else {}
+        self.custom_process_fn = None
+
+        if self.script_path_str and self.function_name:
+            self.script_path = Path(self.script_path_str)
+            if not self.script_path.is_file():
+                raise FileNotFoundError(f"Post-processor script not found: {self.script_path}")
+            self._load_custom_function()
+        elif self.script_path_str or self.function_name: # Only one provided
+             raise ValueError("CustomScriptPostProcessor requires both 'script_path' and 'function_name' if one is provided.")
+        # If neither is provided, it will act like DefaultPostProcessor unless process is overridden
+
+    def _load_custom_function(self):
+        """Loads the custom function from the specified script."""
+        try:
+            spec = importlib.util.spec_from_file_location(f"custom_postproc_module.{self.function_name}", str(self.script_path))
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not create module spec for post-processor script {self.script_path}")
+
+            custom_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_module) #type: ignore
+
+            if not hasattr(custom_module, str(self.function_name)): # Ensure function_name is str
+                raise AttributeError(f"Function '{self.function_name}' not found in script '{self.script_path}'")
+            
+            self.custom_process_fn = getattr(custom_module, str(self.function_name))
+            logger.info(f"CustomScriptPostProcessor loaded {self.function_name} from {self.script_path}")
+        except Exception as e:
+            logger.error(f"Failed to load custom post-processor function '{self.function_name}' from '{self.script_path}': {e}", exc_info=True)
+            raise
+
+    def process(self, predictions: List[Any], labels: List[Any], batch: Optional[Dict[str, Any]] = None) -> Tuple[List[Any], List[Any]]:
+        """
+        Processes predictions and labels using the custom function.
+        :param predictions: Raw generated text from the model for the batch.
+        :param labels: Raw labels from the dataset batch.
+        :param batch: The original batch data (optional).
+        :return: Tuple of (processed_predictions, processed_labels).
+        """
+        if self.custom_process_fn:
+            try:
+                # The custom function receives predictions, labels, the original batch (for context), and its specific script_args
+                # Signature: my_func(predictions, labels, batch, script_args) -> (processed_preds, processed_labels)
+                return self.custom_process_fn(
+                    predictions=predictions,
+                    labels=labels,
+                    batch=batch, # Pass the original batch for context if needed
+                    script_args=self.script_args
+                )
+            except Exception as e:
+                logger.error(f"Error executing custom post-processor function '{self.function_name}': {e}", exc_info=True)
+                # Fallback to default behavior or re-raise
+                return DefaultPostProcessor().process(predictions, labels, batch)
+        else:
+            # Fallback to default if no script specified
+            logger.debug("CustomScriptPostProcessor acting as DefaultPostProcessor (no script/function specified).")
+            return DefaultPostProcessor().process(predictions, labels, batch)
