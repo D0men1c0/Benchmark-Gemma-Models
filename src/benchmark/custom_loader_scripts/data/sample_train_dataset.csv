@@ -1,0 +1,101 @@
+id,text_content,category_label
+train_0000,Sample train text 1: The team worked collaboratively to achieve their goals. Healthy eating and regular exercise are important for well-being.,0
+train_0001,Sample train text 2: The weather is sunny and warm today. The new movie received excellent reviews from critics.,2
+train_0002,Sample train text 3: The new movie received excellent reviews from critics. The weather is sunny and warm today.,1
+train_0003,Sample train text 4: Learning a new language can be challenging but rewarding. Environmental conservation is a global responsibility.,2
+train_0004,Sample train text 5: Learning a new language can be challenging but rewarding. The team worked collaboratively to achieve their goals.,2
+train_0005,Sample train text 6: Healthy eating and regular exercise are important for well-being. This is a complex problem that requires a creative solution.,0
+train_0006,Sample train text 7: The weather is sunny and warm today. Environmental conservation is a global responsibility.,1
+train_0007,Sample train text 8: Artificial intelligence is rapidly transforming various industries. The new movie received excellent reviews from critics.,0
+train_0008,Sample train text 9: The team worked collaboratively to achieve their goals. Reading books expands your knowledge and vocabulary.,0
+train_0009,Sample train text 10: Reading books expands your knowledge and vocabulary. Reading books expands your knowledge and vocabulary.,0
+train_0010,Sample train text 11: Artificial intelligence is rapidly transforming various industries. Environmental conservation is a global responsibility.,1
+train_0011,Sample train text 12: The team worked collaboratively to achieve their goals. The team worked collaboratively to achieve their goals.,2
+train_0012,Sample train text 13: Environmental conservation is a global responsibility. This is a complex problem that requires a creative solution.,0
+train_0013,Sample train text 14: Learning a new language can be challenging but rewarding. Artificial intelligence is rapidly transforming various industries.,0
+train_0014,Sample train text 15: Learning a new language can be challenging but rewarding. Reading books expands your knowledge and vocabulary.,0
+train_0015,Sample train text 16: Healthy eating and regular exercise are important for well-being. Reading books expands your knowledge and vocabulary.,1
+train_0016,Sample train text 17: Learning a new language can be challenging but rewarding. The team worked collaboratively to achieve their goals.,0
+train_0017,Sample train text 18: Healthy eating and regular exercise are important for well-being. Environmental conservation is a global responsibility.,2
+train_0018,Sample train text 19: The team worked collaboratively to achieve their goals. This is a complex problem that requires a creative solution.,0
+train_0019,Sample train text 20: The weather is sunny and warm today. The team worked collaboratively to achieve their goals.,1
+train_0020,Sample train text 21: The new movie received excellent reviews from critics. The team worked collaboratively to achieve their goals.,0
+train_0021,Sample train text 22: Artificial intelligence is rapidly transforming various industries. The new movie received excellent reviews from critics.,2
+train_0022,Sample train text 23: Learning a new language can be challenging but rewarding. Environmental conservation is a global responsibility.,0
+train_0023,Sample train text 24: The team worked collaboratively to achieve their goals. Environmental conservation is a global responsibility.,1
+train_0024,Sample train text 25: The team worked collaboratively to achieve their goals. This is a complex problem that requires a creative solution.,1
+train_0025,Sample train text 26: Learning a new language can be challenging but rewarding. The team worked collaboratively to achieve their goals.,2
+train_0026,Sample train text 27: Healthy eating and regular exercise are important for well-being. Learning a new language can be challenging but rewarding.,2
+train_0027,Sample train text 28: Healthy eating and regular exercise are important for well-being. Reading books expands your knowledge and vocabulary.,2
+train_0028,Sample train text 29: Reading books expands your knowledge and vocabulary. The team worked collaboratively to achieve their goals.,1
+train_0029,Sample train text 30: Healthy eating and regular exercise are important for well-being. The new movie received excellent reviews from critics.,2
+train_0030,Sample train text 31: This is a complex problem that requires a creative solution. The new movie received excellent reviews from critics.,2
+train_0031,Sample train text 32: Environmental conservation is a global responsibility. Learning a new language can be challenging but rewarding.,1
+train_0032,Sample train text 33: Artificial intelligence is rapidly transforming various industries. Healthy eating and regular exercise are important for well-being.,0
+train_0033,Sample train text 34: The team worked collaboratively to achieve their goals. Artificial intelligence is rapidly transforming various industries.,2
+train_0034,Sample train text 35: Reading books expands your knowledge and vocabulary. Technology continues to evolve at an unprecedented pace.,0
+train_0035,Sample train text 36: Artificial intelligence is rapidly transforming various industries. Learning a new language can be challenging but rewarding.,0
+train_0036,Sample train text 37: Artificial intelligence is rapidly transforming various industries. Healthy eating and regular exercise are important for well-being.,1
+train_0037,Sample train text 38: The new movie received excellent reviews from critics. Environmental conservation is a global responsibility.,1
+train_0038,Sample train text 39: This is a complex problem that requires a creative solution. Reading books expands your knowledge and vocabulary.,1
+train_0039,Sample train text 40: Healthy eating and regular exercise are important for well-being. Artificial intelligence is rapidly transforming various industries.,1
+train_0040,Sample train text 41: The weather is sunny and warm today. Learning a new language can be challenging but rewarding.,1
+train_0041,Sample train text 42: Learning a new language can be challenging but rewarding. Reading books expands your knowledge and vocabulary.,0
+train_0042,Sample train text 43: Reading books expands your knowledge and vocabulary. The new movie received excellent reviews from critics.,1
+train_0043,Sample train text 44: Learning a new language can be challenging but rewarding. The team worked collaboratively to achieve their goals.,0
+train_0044,Sample train text 45: The team worked collaboratively to achieve their goals. Technology continues to evolve at an unprecedented pace.,2
+train_0045,Sample train text 46: Healthy eating and regular exercise are important for well-being. The weather is sunny and warm today.,1
+train_0046,Sample train text 47: Reading books expands your knowledge and vocabulary. Artificial intelligence is rapidly transforming various industries.,2
+train_0047,Sample train text 48: The team worked collaboratively to achieve their goals. Environmental conservation is a global responsibility.,2
+train_0048,Sample train text 49: The new movie received excellent reviews from critics. Learning a new language can be challenging but rewarding.,2
+train_0049,Sample train text 50: The new movie received excellent reviews from critics. Learning a new language can be challenging but rewarding.,1
+train_0050,Sample train text 51: Environmental conservation is a global responsibility. The team worked collaboratively to achieve their goals.,0
+train_0051,Sample train text 52: The team worked collaboratively to achieve their goals. The new movie received excellent reviews from critics.,2
+train_0052,Sample train text 53: The weather is sunny and warm today. This is a complex problem that requires a creative solution.,2
+train_0053,Sample train text 54: Environmental conservation is a global responsibility. The weather is sunny and warm today.,2
+train_0054,Sample train text 55: Environmental conservation is a global responsibility. Healthy eating and regular exercise are important for well-being.,0
+train_0055,Sample train text 56: The weather is sunny and warm today. Environmental conservation is a global responsibility.,0
+train_0056,Sample train text 57: Healthy eating and regular exercise are important for well-being. Environmental conservation is a global responsibility.,1
+train_0057,Sample train text 58: Learning a new language can be challenging but rewarding. The weather is sunny and warm today.,2
+train_0058,Sample train text 59: Learning a new language can be challenging but rewarding. This is a complex problem that requires a creative solution.,2
+train_0059,Sample train text 60: Artificial intelligence is rapidly transforming various industries. Learning a new language can be challenging but rewarding.,0
+train_0060,Sample train text 61: Reading books expands your knowledge and vocabulary. Learning a new language can be challenging but rewarding.,1
+train_0061,Sample train text 62: Healthy eating and regular exercise are important for well-being. Environmental conservation is a global responsibility.,0
+train_0062,Sample train text 63: The weather is sunny and warm today. This is a complex problem that requires a creative solution.,0
+train_0063,Sample train text 64: Learning a new language can be challenging but rewarding. The new movie received excellent reviews from critics.,0
+train_0064,Sample train text 65: Reading books expands your knowledge and vocabulary. Environmental conservation is a global responsibility.,2
+train_0065,Sample train text 66: The weather is sunny and warm today. Artificial intelligence is rapidly transforming various industries.,1
+train_0066,Sample train text 67: Artificial intelligence is rapidly transforming various industries. Environmental conservation is a global responsibility.,0
+train_0067,Sample train text 68: The new movie received excellent reviews from critics. Technology continues to evolve at an unprecedented pace.,2
+train_0068,Sample train text 69: Reading books expands your knowledge and vocabulary. Reading books expands your knowledge and vocabulary.,1
+train_0069,Sample train text 70: This is a complex problem that requires a creative solution. This is a complex problem that requires a creative solution.,0
+train_0070,Sample train text 71: The weather is sunny and warm today. Learning a new language can be challenging but rewarding.,2
+train_0071,Sample train text 72: The team worked collaboratively to achieve their goals. The weather is sunny and warm today.,2
+train_0072,Sample train text 73: Environmental conservation is a global responsibility. The team worked collaboratively to achieve their goals.,2
+train_0073,Sample train text 74: Technology continues to evolve at an unprecedented pace. The new movie received excellent reviews from critics.,0
+train_0074,Sample train text 75: This is a complex problem that requires a creative solution. Artificial intelligence is rapidly transforming various industries.,2
+train_0075,Sample train text 76: The new movie received excellent reviews from critics. The new movie received excellent reviews from critics.,1
+train_0076,Sample train text 77: This is a complex problem that requires a creative solution. The new movie received excellent reviews from critics.,2
+train_0077,Sample train text 78: This is a complex problem that requires a creative solution. Healthy eating and regular exercise are important for well-being.,1
+train_0078,Sample train text 79: Reading books expands your knowledge and vocabulary. The new movie received excellent reviews from critics.,1
+train_0079,Sample train text 80: The team worked collaboratively to achieve their goals. Environmental conservation is a global responsibility.,0
+train_0080,Sample train text 81: The new movie received excellent reviews from critics. Healthy eating and regular exercise are important for well-being.,2
+train_0081,Sample train text 82: The new movie received excellent reviews from critics. Technology continues to evolve at an unprecedented pace.,2
+train_0082,Sample train text 83: The weather is sunny and warm today. Artificial intelligence is rapidly transforming various industries.,1
+train_0083,Sample train text 84: Learning a new language can be challenging but rewarding. Learning a new language can be challenging but rewarding.,1
+train_0084,Sample train text 85: Technology continues to evolve at an unprecedented pace. The new movie received excellent reviews from critics.,1
+train_0085,Sample train text 86: Technology continues to evolve at an unprecedented pace. Learning a new language can be challenging but rewarding.,1
+train_0086,Sample train text 87: The new movie received excellent reviews from critics. This is a complex problem that requires a creative solution.,2
+train_0087,Sample train text 88: Environmental conservation is a global responsibility. The team worked collaboratively to achieve their goals.,2
+train_0088,Sample train text 89: Reading books expands your knowledge and vocabulary. Healthy eating and regular exercise are important for well-being.,1
+train_0089,Sample train text 90: The team worked collaboratively to achieve their goals. This is a complex problem that requires a creative solution.,0
+train_0090,Sample train text 91: The new movie received excellent reviews from critics. The weather is sunny and warm today.,1
+train_0091,Sample train text 92: The team worked collaboratively to achieve their goals. Reading books expands your knowledge and vocabulary.,2
+train_0092,Sample train text 93: Artificial intelligence is rapidly transforming various industries. Technology continues to evolve at an unprecedented pace.,0
+train_0093,Sample train text 94: Environmental conservation is a global responsibility. The new movie received excellent reviews from critics.,0
+train_0094,Sample train text 95: Learning a new language can be challenging but rewarding. The team worked collaboratively to achieve their goals.,1
+train_0095,Sample train text 96: Technology continues to evolve at an unprecedented pace. Learning a new language can be challenging but rewarding.,1
+train_0096,Sample train text 97: This is a complex problem that requires a creative solution. This is a complex problem that requires a creative solution.,1
+train_0097,Sample train text 98: The team worked collaboratively to achieve their goals. Artificial intelligence is rapidly transforming various industries.,2
+train_0098,Sample train text 99: Artificial intelligence is rapidly transforming various industries. Environmental conservation is a global responsibility.,2
+train_0099,Sample train text 100: Technology continues to evolve at an unprecedented pace. Learning a new language can be challenging but rewarding.,2

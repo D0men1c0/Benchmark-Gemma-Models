@@ -1,0 +1,21 @@
+id,text_content,category_label
+test_0000,Sample test text 1: This is a complex problem that requires a creative solution. This is a complex problem that requires a creative solution.,1
+test_0001,Sample test text 2: The weather is sunny and warm today. The team worked collaboratively to achieve their goals.,1
+test_0002,Sample test text 3: This is a complex problem that requires a creative solution. Learning a new language can be challenging but rewarding.,0
+test_0003,Sample test text 4: Artificial intelligence is rapidly transforming various industries. Reading books expands your knowledge and vocabulary.,0
+test_0004,Sample test text 5: The weather is sunny and warm today. Reading books expands your knowledge and vocabulary.,1
+test_0005,Sample test text 6: Environmental conservation is a global responsibility. The new movie received excellent reviews from critics.,1
+test_0006,Sample test text 7: Reading books expands your knowledge and vocabulary. Learning a new language can be challenging but rewarding.,0
+test_0007,Sample test text 8: Reading books expands your knowledge and vocabulary. Learning a new language can be challenging but rewarding.,1
+test_0008,Sample test text 9: The new movie received excellent reviews from critics. Reading books expands your knowledge and vocabulary.,1
+test_0009,Sample test text 10: Healthy eating and regular exercise are important for well-being. Artificial intelligence is rapidly transforming various industries.,2
+test_0010,Sample test text 11: Technology continues to evolve at an unprecedented pace. Artificial intelligence is rapidly transforming various industries.,2
+test_0011,Sample test text 12: The new movie received excellent reviews from critics. Environmental conservation is a global responsibility.,0
+test_0012,Sample test text 13: Technology continues to evolve at an unprecedented pace. Environmental conservation is a global responsibility.,1
+test_0013,Sample test text 14: The team worked collaboratively to achieve their goals. This is a complex problem that requires a creative solution.,2
+test_0014,Sample test text 15: The team worked collaboratively to achieve their goals. The new movie received excellent reviews from critics.,1
+test_0015,Sample test text 16: Learning a new language can be challenging but rewarding. Learning a new language can be challenging but rewarding.,0
+test_0016,Sample test text 17: Learning a new language can be challenging but rewarding. Environmental conservation is a global responsibility.,0
+test_0017,Sample test text 18: Environmental conservation is a global responsibility. This is a complex problem that requires a creative solution.,1
+test_0018,Sample test text 19: Technology continues to evolve at an unprecedented pace. Artificial intelligence is rapidly transforming various industries.,1
+test_0019,Sample test text 20: Learning a new language can be challenging but rewarding. Reading books expands your knowledge and vocabulary.,0

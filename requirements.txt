@@ -25,3 +25,7 @@ pydantic==2.11.3
 rouge==1.0.1
 tensorflow
 tf-keras
+streamlit
+seaborn
+plotly
+matplotlib
