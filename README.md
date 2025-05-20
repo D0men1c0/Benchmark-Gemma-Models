@@ -372,43 +372,25 @@ Adding a new component only requires subclassing and registration.
 
 We aim to strengthen the framework’s stability, usability, and reach, while welcoming community contributions and feedback.
 
-### Short- to Mid-Term Goals
+### Immediate & Medium-Term Goals
 
-- **Improve Testing and Robustness**
-  - Add unit and integration tests for key components (models, datasets, tasks, metrics, post-processing).
-  - Validate the full pipeline across varied configurations, especially with custom scripts.
+* **Framework Solidification & Expansion:**
+    * Improve testing and robustness by adding comprehensive unit and integration tests, especially for custom script functionalities.
+    * Expand the suite of built-in evaluation metrics and streamline the integration of new academic benchmarks.
+    * Enhance existing documentation (README, code comments) and create richer examples for custom scripts to improve clarity and ease of use.
+    * Refine GLUE task support, focusing on prompt templates and output parsing for more reliable results.
+* **Community Engagement & Initial Promotion:**
+    * Share the project through blog posts and social media (e.g., LinkedIn) to gather initial user feedback.
+    * Actively address reported issues and incorporate valuable suggestions from the community.
 
-- **Expand Metrics and Benchmarks**
-  - Add more standard evaluation metrics.
-  - Make it easier to plug in new academic benchmarks.
+### Future Vision & Enhancements
 
-- **Enhance Documentation and Examples**
-  - Create richer examples for custom scripts.
-  - Develop complete GitHub Pages documentation.
-
-- **Refine GLUE Task Support**
-  - Improve prompt templates and output parsing for GLUE-related tasks.
-
-- **Engage the Community**
-  - Collect feedback, fix pain points, and encourage external contributions.
-
-### Long-Term Vision
-
-- **Comprehensive Documentation Site**
-  - Publish a full-featured documentation hub with tutorials and configuration guides.
-
-- **Advanced Visualization**
-  - Add features to the Streamlit dashboard: error analysis, historical comparisons, and model insights.
-
-- **Cloud & Distributed Execution**
-  - Provide examples or tools for running benchmarks on Colab Pro, AWS, GCP, etc.
-  - Explore distributed benchmarking for large-scale evaluations.
-
-- **Database Integration**
-  - Support storing and querying benchmark results using SQLite/PostgreSQL for longitudinal analysis.
-
-- **Wider Framework & Model Support**
-  - Continuously add compatibility for new LLMs and serving backends.
+* **Comprehensive Documentation & Advanced Features:**
+    * Develop a dedicated GitHub Pages documentation site for in-depth guides and tutorials if community interest and project complexity warrant it.
+    * Enhance the Streamlit dashboard with advanced visualization and error analysis capabilities.
+    * Explore options for simplified cloud execution (Colab Pro, AWS, GCP) and potential database integration for longitudinal result tracking.
+* **Broader Ecosystem Support:**
+    * Continuously add compatibility for new LLMs, model serving frameworks, and evolving evaluation methodologies based on community demand and advancements in the field.
 
 ---
 
