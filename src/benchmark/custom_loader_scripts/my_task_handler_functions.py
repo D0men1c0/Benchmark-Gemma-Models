@@ -1,3 +1,4 @@
+import re
 from typing import Dict, Any, Tuple, List
 
 import torch
@@ -24,22 +25,32 @@ def example_custom_batch_processor(
     :param script_args: Additional arguments passed from the YAML configuration.
     :return: A tuple of (predictions, labels).
     """
-    logger.info(f"Executing example_custom_batch_processor with script_args: {script_args}")
-    
-    input_texts = batch.get("input_text", []) # Assuming normalized field name
-    original_labels = batch.get("target_text", [None] * len(input_texts)) # Or "label_index" etc.
+    logger.info(f"Executing example_custom_batch_processor. Batch keys: {list(batch.keys())}. Script_args: {script_args}")
+
+    input_texts = batch.get("text_content", [])
+    original_labels_data = batch.get("category_label", [])
+
+    logger.info(f"Number of input_texts obtained: {len(input_texts)}")
+
+    if input_texts:
+        original_labels = original_labels_data
+    else:
+        original_labels = []
+
+    logger.info(f"Original labels obtained (first 5 if many, or all if less): {original_labels[:5]}")
 
     if not input_texts:
+        logger.warning("example_custom_batch_processor: input_texts is empty, returning ([], [])")
         return [], []
     
     prompts_to_model = []
-    if advanced_args.get("prompt_template"):
-        # Basic template filling example if no separate PromptBuilder is used
-        template = advanced_args["prompt_template"]
+    prompt_template_from_yaml = advanced_args.get("prompt_template")
+    if prompt_template_from_yaml:
+        template = prompt_template_from_yaml
         for text in input_texts:
             prompts_to_model.append(template.format(input_text=text))
     else:
-        prompts_to_model = input_texts # Assume input_text is already the prompt
+        prompts_to_model = input_texts
 
     # --- 2. Model Inference ---
     inputs = tokenizer(prompts_to_model, return_tensors="pt", padding=True, truncation=True,
@@ -65,3 +76,50 @@ def example_custom_batch_processor(
     logger.info(f"  Custom handler generated: {predictions[:2]}...") # Log a sample
     
     return predictions, original_labels
+
+def creative_elaboration_processor(
+    batch: Dict[str, Any],
+    model: Any,
+    tokenizer: Any,
+    device: str,
+    advanced_args: Dict[str, Any],
+    script_args: Dict[str, Any] 
+) -> Tuple[List[str], List[str]]:
+    """
+    Prepares prompts for a creative elaboration task.
+    :param batch: The input batch of data.
+    :param model: The model to use for inference.
+    :param tokenizer: The tokenizer to use for processing text.
+    :param device: The device to run the model on.
+    :param advanced_args: Advanced arguments for model inference.
+    :param script_args: Additional arguments passed from the YAML configuration.
+    :return: A tuple of (prompts_to_model, cleaned_input_themes).
+    """
+    logger.info(f"Executing prepare_creative_elaboration_prompts. Batch keys: {list(batch.keys())}. Script_args: {script_args}")
+
+    raw_input_texts = batch.get("text_content", [])
+    
+    if not raw_input_texts:
+        logger.warning("prepare_creative_elaboration_prompts: raw_input_texts is empty, returning ([], [])")
+        return [], []
+
+    cleaned_input_themes = []
+    for text in raw_input_texts:
+        cleaned_text = re.sub(r"Sample (train|validation|test) text \d+:\s*", "", text, 1)
+        cleaned_input_themes.append(cleaned_text.strip())
+    
+    logger.info(f"  Cleaned input themes (first 2 if many): {cleaned_input_themes[:2]}")
+
+    prompts_to_model = []
+    template = advanced_args.get("prompt_template", "Expand on this idea with a creative paragraph:\nIdea: {theme}\n\nCreative Paragraph:") # Default se non specificato
+    logger.info(f"  Using prompt template for creative elaboration: \"{template}\"")
+
+    for theme_text in cleaned_input_themes:
+        prompts_to_model.append(template.format(theme=theme_text))
+
+    if not prompts_to_model:
+        logger.warning("prepare_creative_elaboration_prompts: No prompts were generated.")
+        return [], cleaned_input_themes if cleaned_input_themes else []
+        
+    logger.info(f"  Prepared {len(prompts_to_model)} prompts.")
+    return prompts_to_model, cleaned_input_themes

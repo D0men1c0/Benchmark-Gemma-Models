@@ -144,3 +144,40 @@ def advanced_choice_extractor_postprocessor(
             processed_labels.append(str(label_val) if label_val is not None else default_invalid_label)
             
     return processed_predictions, processed_labels
+
+def clean_elaboration_output(
+    predictions: List[Any],
+    labels: List[Any], 
+    batch: Optional[Dict[str, Any]] = None,
+    script_args: Optional[Dict[str, Any]] = None
+) -> Tuple[List[Any], List[Any]]:
+    """
+    A post-processing function for cleaning elaboration outputs.
+    - Removes a specified prefix from string predictions.
+    - Converts labels to strings.
+    - Passes through non-string predictions and labels unmodified.
+    :param predictions: List of model predictions (strings).
+    :param labels: List of true labels (can be any type).
+    :param batch: Original batch data (optional).
+    :param script_args: Additional arguments passed from the YAML configuration.
+    :return: A tuple of (processed_predictions, processed_labels).
+    """
+    if script_args is None:
+        script_args = {}
+
+    prefix_to_remove = script_args.get("elaboration_prefix_to_remove", "Elaboration:")
+
+    processed_predictions = []
+    for pred_text in predictions:
+        if not isinstance(pred_text, str):
+            processed_predictions.append(str(pred_text))
+            continue
+
+        cleaned_text = pred_text.strip()
+        if prefix_to_remove and cleaned_text.lower().startswith(prefix_to_remove.lower()):
+            cleaned_text = cleaned_text[len(prefix_to_remove):].strip()
+        
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        processed_predictions.append(cleaned_text)
+
+    return processed_predictions, labels
