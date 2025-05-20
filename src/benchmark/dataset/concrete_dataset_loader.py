@@ -349,7 +349,12 @@ class CustomScriptDatasetLoader(BaseDatasetLoader):
                  name: str, 
                  source_type: str, # For consistency, though "custom_script" is implied
                  **loader_init_kwargs): # Catches ALL other args from YAML via factory
-
+        """
+        Initializes the CustomScriptDatasetLoader with the provided parameters.
+        :param name: Name of the dataset
+        :param source_type: Source type (should be "custom_script")
+        :param loader_init_kwargs: Additional parameters for the dataset loader
+        """
         # If BaseDatasetLoader has an __init__ that takes these, call it.
         # Otherwise, assign them directly.
         # super().__init__(name, source_type, **loader_init_kwargs) 
@@ -399,6 +404,11 @@ class CustomScriptDatasetLoader(BaseDatasetLoader):
 
 
     def load(self, task_type: Optional[str] = None) -> Iterable:
+        """
+        Loads the dataset by executing the user-defined function from the script.
+        :param task_type: Type of ML task (e.g., classification, translation)
+        :return: Loaded dataset
+        """
         self.logger.info(f"Loading custom dataset '{self.name}' using script '{str(self.script_path)}' and function '{self.function_name}'")
 
         try:
@@ -477,4 +487,9 @@ class CustomScriptDatasetLoader(BaseDatasetLoader):
 
     @classmethod
     def register_source(cls, source_type: str, loader_fn: Callable):
+        """
+        Registers a custom loader function for a specific source type.
+        :param source_type: Source type identifier
+        :param loader_fn: Function to load the dataset
+        """
         logger.warning("CustomScriptDatasetLoader uses dynamic script loading; direct 'register_source' might not be typical.")
