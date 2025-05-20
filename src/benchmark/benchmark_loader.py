@@ -81,22 +81,28 @@ class BenchmarkRunner:
         quantization = model_cfg.quantization
         self.logger.info(f"--- Loading Model: {model_name} ({framework}, Quant: {quantization}) ---")
         try:
-            model_load_params = self.config.model_parameters.dict(exclude_none=True)
+            model_specific_params = model_cfg.dict(exclude_none=True)
+            global_model_params = self.config.model_parameters.dict(exclude_none=True)
+
+            self.logger.debug(f"Model specific params for '{model_name}': {model_specific_params.keys()}")
+            self.logger.debug(f"Global model params: {global_model_params.keys()}")
+
             model_loader = ModelLoaderFactory.get_model_loader(
                 model_name=model_cfg.checkpoint or model_name,
                 framework=framework,
-                quantization=quantization, 
-                **model_load_params
+                quantization=quantization,
+                model_specific_config_params=model_specific_params,
+                global_model_creation_params=global_model_params
             )
             model, tokenizer = model_loader.load(quantization=quantization)
 
             device_placement_handled_by_loader = False
             if model_cfg.quantization in ["4bit", "8bit"]: # Check original config
                 device_placement_handled_by_loader = True
-                self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
+                #self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
             elif hasattr(model, 'hf_device_map') and model.hf_device_map is not None:
                 device_placement_handled_by_loader = True
-                self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
+                #self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
 
             if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to') and not device_placement_handled_by_loader:
                 self.logger.info(f"Moving model '{model_name}' to device '{self.device}'.")
