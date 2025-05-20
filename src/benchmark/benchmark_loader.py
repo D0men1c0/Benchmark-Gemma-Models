@@ -1,6 +1,5 @@
-import logging
 import torch
-from typing import Dict, List, Any, Tuple, Iterable, Optional
+from typing import Dict, Any, Tuple, Optional
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 import gc
@@ -36,39 +35,32 @@ class BenchmarkRunner:
             self.logger.info("No GPU detected. Using CPU.")
             return "cpu"
 
-    def _load_all_datasets(self) -> Dict[str, Dict[str, Any]]:
+    def _load_single_dataset(self, task_cfg: TaskConfig) -> Optional[Dict[str, Any]]:
         """
-        Loads datasets for all tasks defined in the config.
-        :return: Dictionary of datasets structured as {task_name: {dataset: dataset_instance, streaming: bool}}
+        Loads a single dataset for a given task configuration.
+        :param task_cfg: The configuration for the task.
+        :return: Dictionary with dataset info or None if loading fails.
         """
-        task_datasets = {}
-        self.logger.info("Pre-loading datasets...")
-        if not self.config.tasks:
-             self.logger.error("No tasks defined in config. Aborting dataset loading.")
-             return {}
-
-        for task_cfg in self.config.tasks:
-            task_name = task_cfg.name
-            if not task_cfg.datasets:
-                self.logger.warning(f"Task '{task_name}' has no datasets defined. Skipping.")
-                continue
-            try:
-                # Assuming one dataset per task for simplicity in this structure
-                ds_cfg = task_cfg.datasets[0]
-                self.logger.debug(f"Loading dataset '{ds_cfg.name}' for task '{task_name}' (type: {task_cfg.type})...")
-                loader = DatasetFactory.from_config(ds_cfg.dict(exclude_none=True))
-                dataset = loader.load(task_type=task_cfg.type) # Pass task_type for normalization
-                task_datasets[task_name] = {
-                    "dataset": dataset,
-                    "streaming": loader.streaming,
-                    "task_config": task_cfg # Keep task config for later use
-                }
-                self.logger.debug(f"Dataset '{ds_cfg.name}' ready for task '{task_name}'.")
-            except Exception as e:
-                self.logger.error(f"Failed to load dataset for task '{task_name}': {e}. This task will be skipped.", exc_info=True)
-                task_datasets[task_name] = None # Mark as failed
-        self.logger.info("Dataset loading complete.")
-        return task_datasets
+        task_name = task_cfg.name
+        if not task_cfg.datasets:
+            self.logger.warning(f"Task '{task_name}' has no datasets defined. Skipping dataset loading for this task.")
+            return None
+        try:
+            ds_cfg = task_cfg.datasets[0]
+            self.logger.debug(f"Loading dataset '{ds_cfg.name}' for task '{task_name}' (type: {task_cfg.type})...")
+            loader = DatasetFactory.from_config(ds_cfg.model_dump(exclude_none=True))
+            dataset = loader.load(task_type=task_cfg.type)
+            
+            dataset_info = {
+                "dataset": dataset,
+                "streaming": loader.streaming,
+                "task_config": task_cfg # Keep task config for later use
+            }
+            self.logger.debug(f"Dataset '{ds_cfg.name}' loaded for task '{task_name}'.")
+            return dataset_info
+        except Exception as e:
+            self.logger.error(f"Failed to load dataset for task '{task_name}': {e}. This task will be skipped for the current model.", exc_info=True)
+            return None
 
     def _load_model_and_tokenizer(self, model_cfg: ModelConfig) -> Optional[Tuple[Any, Any]]:
         """
@@ -126,20 +118,118 @@ class BenchmarkRunner:
             self.logger.error(f"Failed to load model '{model_name}': {e}. Skipping this model.", exc_info=True)
             return None
 
-    def _cleanup_model_resources(self, model: Optional[Any], tokenizer: Optional[Any]):
+    # Disk cache cleanup (commented out for now)
+    # Uncomment the block below if you want to implement disk cache cleanup
+    def _helper_disk_cache_cleanup(self, model_cfg: ModelConfig):
+        """
+        To enable disk cleanup, remove the `raise RuntimeError(...)`
+        and uncomment the block below. Use with extreme caution: the method deletes local directories.
+        """
+        raise RuntimeError("Disk cleanup is disabled by default for safety. Uncomment and review carefully before using.")
+        '''
+        import os
+        # Disk cache cleanup
+        if not model_cfg.cleanup_model_cache_after_run:
+            self.logger.info(f"Disk cache cleanup for model '{model_identifier}' is not requested (cleanup_model_cache_after_run=False).")
+            return
+
+        if not model_cfg.checkpoint:
+            self.logger.warning(f"Cleanup model cache requested for '{model_cfg.name}', but 'checkpoint' (model ID for cache) is not defined. Cannot determine cache path.")
+            return
+
+        self.logger.info(f"Attempting to cleanup disk cache for model '{model_identifier}' as per configuration (cleanup_model_cache_after_run=True).")
+        try:
+            # 1. Check Hugging Face cache directory
+            hf_home_str = os.getenv("HF_HOME", str(Path.home() / ".cache" / "huggingface"))
+            hf_home = Path(hf_home_str).resolve() # Resolve to absolute path
+            hub_cache = (hf_home / "hub").resolve()
+            
+            if not hub_cache.is_dir():
+                self.logger.warning(f"Hugging Face hub cache directory '{hub_cache}' does not exist. Skipping disk cleanup.")
+                return
+
+            # 2. Build the model directory name
+            checkpoint_parts = model_cfg.checkpoint.split('/')
+            if len(checkpoint_parts) == 1: # Es. "gpt2"
+                # For local models, we need to check if it's a valid model directory
+                # and if it's a local path, we skip the cleanup
+                if Path(model_cfg.checkpoint).is_dir() or Path(model_cfg.checkpoint).is_file():
+                     self.logger.warning(f"Checkpoint '{model_cfg.checkpoint}' for model '{model_cfg.name}' looks like a local path. Disk cleanup is intended for Hugging Face Hub models. Skipping.")
+                     return
+                model_dir_name = f"models--{checkpoint_parts[0]}"
+            elif len(checkpoint_parts) == 2: # Es. "google/gemma-2b"
+                owner, repo = checkpoint_parts
+                model_dir_name = f"models--{owner}--{repo}"
+            else:
+                self.logger.warning(f"Could not reliably determine cache directory name for checkpoint '{model_cfg.checkpoint}'. Expected format 'model_name' or 'owner/model_name'. Skipping disk cleanup.")
+                return
+
+            # 3. Build the potential model cache path
+            potential_model_cache_path = (hub_cache / model_dir_name).resolve()
+
+            # 4. Safety checks
+            #    a) The path must exist and be a directory
+            if not potential_model_cache_path.is_dir():
+                self.logger.warning(f"Model cache directory '{potential_model_cache_path}' does not exist or is not a directory. Skipping disk cleanup for '{model_identifier}'.")
+                return
+
+            #    b) The path must be a direct child of the hub cache directory
+            #       This prevents accidental deletion of unrelated directories.
+            if potential_model_cache_path.parent != hub_cache:
+                self.logger.error(
+                    f"CRITICAL SAFETY CHECK FAILED: Path '{potential_model_cache_path}' is not a direct child of "
+                    f"the hub cache directory '{hub_cache}'. Disk cleanup ABORTED for model '{model_identifier}'."
+                )
+                return
+
+            #    c) The final directory name must match the expected model directory name
+            if potential_model_cache_path.name != model_dir_name:
+                self.logger.error(
+                    f"CRITICAL SAFETY CHECK FAILED: Resolved directory name '{potential_model_cache_path.name}' "
+                    f"does not match expected model directory name '{model_dir_name}'. Disk cleanup ABORTED for model '{model_identifier}'."
+                )
+                return
+                
+            #    d) The directory name must start with "models--"
+            if not model_dir_name.startswith("models--"):
+                self.logger.error(
+                    f"CRITICAL SAFETY CHECK FAILED: Constructed model directory name '{model_dir_name}' "
+                    f"does not start with 'models--'. Disk cleanup ABORTED for model '{model_identifier}'."
+                )
+                return
+
+            # 5. Perform the cleanup
+            self.logger.info(f"All safety checks passed. Proceeding to delete model cache directory: {potential_model_cache_path}")
+
+            # IF YOU WANT TO DELETE THE DISK CACHE, WRITE HERE THE CODE
+
+            self.logger.info(f"Successfully deleted disk cache for model '{model_identifier}' from '{potential_model_cache_path}'.")
+
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred during disk cache cleanup for model '{model_identifier}': {e}", exc_info=True)
+        '''
+
+    def _cleanup_model_resources(self, model: Optional[Any], tokenizer: Optional[Any], model_cfg: ModelConfig = None):
         """
         Releases model and tokenizer resources.
         :param model: The model instance to be cleaned up.
         :param tokenizer: The tokenizer instance to be cleaned up.
+        :param model_cfg: The configuration for the model.
         """
-        model_name = getattr(model, 'name_or_path', 'Unknown') # Try to get name for log
-        self.logger.info(f"Cleaning up resources for model '{model_name}'...")
+        model_identifier = model_cfg.checkpoint if model_cfg.checkpoint else model_cfg.name
+        self.logger.info(f"Cleaning up memory resources for model '{model_identifier}'...")
+        
+        # Release model and tokenizer
         del model
         del tokenizer
         gc.collect()
         if self.device == 'cuda':
             torch.cuda.empty_cache()
-        self.logger.info(f"Resources cleaned up for model '{model_name}'.")
+        self.logger.info(f"Memory resources cleaned up for model '{model_identifier}'.")
+
+        # Disk cache cleanup (commented out for now), if you want to use it, uncomment the block below
+        # and add the necessary instructions to delete the cache directory.
+        # self._helper_disk_cache_cleanup(model_cfg)
 
 
     def _process_task_batches(self, handler: Any, data_loader: DataLoader, task_name: str, evaluator: Evaluator) -> bool:
@@ -240,11 +330,6 @@ class BenchmarkRunner:
                             f"Intermediate Metrics: {{{', '.join(log_msg_parts)}}}"
                         )
                         
-                        # Optional: Update tqdm postfix if pbar is passed and is a tqdm instance
-                        # if isinstance(data_loader, tqdm) and hasattr(data_loader, 'set_postfix'):
-                        #     data_loader.set_postfix(intermediate_results, refresh=True)
-
-
             except Exception as e:
                 self.logger.error(
                     f"Error processing batch {batch_num} for task '{task_name}': {e}. Stopping task.", 
@@ -394,57 +479,56 @@ class BenchmarkRunner:
         Executes the benchmark: loads datasets, runs models on tasks, evaluates, and saves results.
         :return: Dictionary of results structured as {model: {task: {metric: value}}}
         """
-        # Load all datasets first
-        task_datasets = self._load_all_datasets()
-        if not task_datasets:
-            return {} # Abort if no datasets could be loaded
-
-        # Iterate through models
         if not self.config.models:
-             self.logger.error("No models defined in the configuration. Aborting.")
-             return {}
+            self.logger.error("No models defined in the configuration. Aborting.")
+            return {}
 
         for model_cfg in self.config.models:
             model_tokenizer_tuple = self._load_model_and_tokenizer(model_cfg)
             if model_tokenizer_tuple is None:
-                continue # Skip model if loading failed
+                self.results[model_cfg.name] = {"error": "Model loading failed", "tasks": {}}
+                self._save_results() # Save partial results
+                continue # Next model
 
             model, tokenizer = model_tokenizer_tuple
-            model_name = model_cfg.name
-            self.results[model_name] = {} # Initialize results for this model
+            model_name_for_results = model_cfg.name
+            self.results[model_name_for_results] = {}
 
-            # Iterate through tasks for the current model
             for task_cfg in self.config.tasks:
                 task_name = task_cfg.name
-                # Check if dataset for this task is available
-                if task_name not in task_datasets or task_datasets[task_name] is None:
-                    self.logger.warning(f"Skipping task '{task_name}' for model '{model_name}' (dataset not loaded).")
-                    continue
+                
+                self.logger.info(f"Preparing dataset for task '{task_name}' with model '{model_name_for_results}'.")
+                dataset_info = self._load_single_dataset(task_cfg)
 
-                dataset_info = task_datasets[task_name]
+                if dataset_info is None:
+                    self.logger.warning(f"Skipping task '{task_name}' for model '{model_name_for_results}' (dataset could not be loaded).")
+                    self.results[model_name_for_results][task_name] = {"error": "Dataset loading failed"}
+                    continue # Skip to next task
+                
                 try:
-                    # Run task and evaluate
                     evaluation_results = self._run_task_evaluation(model, tokenizer, task_cfg, dataset_info)
-
-                    # Store results (or error)
                     if evaluation_results is not None:
-                         self.results[model_name][task_name] = evaluation_results
+                        self.results[model_name_for_results][task_name] = evaluation_results
                     else:
-                         # Optionally store a marker indicating no results were produced
-                         self.results[model_name][task_name] = {"status": "No results generated"}
+                        self.results[model_name_for_results][task_name] = {"status": "No results or error during evaluation"}
                 except Exception as e:
-                    # Catch unexpected errors during the task run/evaluation call itself
-                    self.logger.error(f"Unexpected error during task execution/evaluation for '{task_name}' on model '{model_name}': {e}", exc_info=True)
-                    self.results[model_name][task_name] = {"error": f"Unexpected task error: {e}"}
+                    self.logger.error(f"Unexpected error during task '{task_name}' on model '{model_name_for_results}': {e}", exc_info=True)
+                    self.results[model_name_for_results][task_name] = {"error": f"Task execution/evaluation failed: {str(e)}"}
+                finally:
+                    # Cleanup dataset resources
+                    if dataset_info and "dataset" in dataset_info and dataset_info["dataset"] is not None:
+                        self.logger.info(f"Cleaning up dataset for task '{task_name}' after use with model '{model_name_for_results}'.")
+                        del dataset_info["dataset"]
+                        dataset_info["dataset"] = None # Explicitly set to None
+                        gc.collect()
 
-            # Clean up model resources after processing all tasks for it
-            self._cleanup_model_resources(model, tokenizer)
-
-            # Save intermediate results after each model
-            self.logger.info(f"Saving intermediate results after processing model '{model_name}'...")
+            # Cleanup model, tokenizer resources and disk cache if requested
+            self._cleanup_model_resources(model, tokenizer, model_cfg)
+            
+            # Save intermediate results after processing each model
+            self.logger.info(f"Saving intermediate results after processing model '{model_name_for_results}'...")
             self._save_results()
 
-        # Save final results after all models are processed
-        self.logger.info("All models processed. Saving final results...")
+        self.logger.info("All models processed. Saving final benchmark results...")
         self._save_results()
         return self.results

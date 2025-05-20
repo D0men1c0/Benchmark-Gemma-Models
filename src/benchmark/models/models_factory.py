@@ -67,6 +67,7 @@ class ModelLoaderFactory:
         effective_kwargs.pop('size', None)
         effective_kwargs.pop('model_type', None)
         effective_kwargs.pop('variant', None)
+        effective_kwargs.pop('cleanup_model_cache_after_run', None)
 
         if loader_class == CustomScriptModelLoader:
             logger.debug(f"Instantiating CustomScriptModelLoader for '{model_name}' with effective_kwargs: {list(effective_kwargs.keys())}")
