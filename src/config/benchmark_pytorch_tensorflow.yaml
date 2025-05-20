@@ -6,7 +6,7 @@ general:
 tasks:
   - name: "MMLU (Anatomy Subset - PT/TF Test)"
     type: "multiple_choice_qa"
-    description: "Test MMLU (anatomy) con un modello PyTorch e uno TensorFlow."
+    description: "Test MMLU (anatomy) with PyTorch and TensorFlow models."
     datasets:
       - name: "cais/mmlu"
         source_type: "hf_hub"
