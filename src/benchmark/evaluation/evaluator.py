@@ -23,16 +23,12 @@ class Evaluator:
             metric_name = metric_conf["name"]
             try:
                 metric_instance = MetricFactory.get_metric(metric_name)
-                metric_instance.reset_state()
-                current_metric_options = metric_conf.get("options")
-
-                if current_metric_options is not None and isinstance(current_metric_options, dict):
-                    metric_instance.set_options(**current_metric_options)
-                    self.logger.debug(f"Metric '{metric_name}': Successfully set options to {current_metric_options}")
-                else:
-                    metric_instance.set_options()
-                    self.logger.debug(f"Metric '{metric_name}': No specific options found in config, "
-                                      f"metric will use its default options or an empty options set.")
+                current_metric_options = metric_conf.get("options", {}) # Default to empty dict
+                metric_instance.set_options(**current_metric_options)
+                self.logger.debug(f"Metric '{metric_name}': Set options to {current_metric_options}")
+                
+                # 2. Then reset state (this will call init_fn which should now be loaded)
+                metric_instance.reset_state() 
                 self._metrics_instances[metric_name] = metric_instance
                 self.logger.debug(f"Metric '{metric_name}' initialized and reset.")
             except Exception as e:

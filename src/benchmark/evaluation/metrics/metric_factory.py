@@ -7,7 +7,8 @@ from .concrete_metrics import (
     METEORScoreMetric, JaccardSimilarityMetric, SemanticSimilarityMetric,
     PearsonCorrelationMetric, SpearmanCorrelationMetric, FactualConsistencyMetric,
     SequenceLabelingMetrics, FactualConsistencyMetric, DistinctNGramMetric,
-    WordEntropyMetric, BERTScoreMetric, ToxicityScoreMetric, HFcommonPipelineMetric
+    WordEntropyMetric, BERTScoreMetric, ToxicityScoreMetric, HFcommonPipelineMetric, 
+    NoveltyScoreMetric, CustomScriptMetric
 )
 
 class MetricFactory:
@@ -33,6 +34,8 @@ class MetricFactory:
         "toxicity": ToxicityScoreMetric,
         "factual_consistency": FactualConsistencyMetric,
         "hf_common_pipeline": HFcommonPipelineMetric,
+        "novelty": NoveltyScoreMetric,
+        "custom_script": CustomScriptMetric,
         # --- Add any other new metrics here ---
     }
 

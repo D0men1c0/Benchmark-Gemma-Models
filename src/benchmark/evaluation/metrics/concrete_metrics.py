@@ -1,5 +1,7 @@
 from abc import abstractmethod
-from typing import Any, List, Union, Dict, Optional # Added Optional
+import importlib
+from pathlib import Path
+from typing import Any, List, Set, Union, Dict, Optional # Added Optional
 from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score
 import numpy as np
 import nltk
@@ -1114,3 +1116,217 @@ class ToxicityScoreMetric(HFcommonPipelineMetric):
         """
         avg_score = super().result() # This gets the float average from base class
         return {self._target_label_for_score.lower(): float(avg_score) if isinstance(avg_score, (float, int)) else 0.0}
+
+
+class NoveltyScoreMetric(BaseMetric):
+    """
+    Computes a 'novelty score' for generated text.
+    Example: percentage of unique n-grams in the prediction
+    that are not present in the input prompt (if provided as a label).
+    If labels are not provided or are None, it calculates distinct n-grams of the prediction.
+    """
+    def __init__(self):
+        """Initializes the NoveltyScoreMetric instance."""
+        super().__init__()
+        self.total_novelty_score: float = 0.0
+        self.num_samples: int = 0
+        self._collected_predictions_processed: List[Dict[str, Any]] = []
+        self._collected_labels_processed: List[Optional[str]] = []
+
+    def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
+        self.total_novelty_score = 0.0
+        self.num_samples = 0
+        self._collected_predictions_processed = []
+        self._collected_labels_processed = []
+
+
+    def _get_ngrams(self, text: str, n: int) -> Set[str]:
+        """
+        Generates n-grams from the input text.
+        :param text: Input text to process.
+        :param n: Size of the n-grams.
+        :return: Set of n-grams.
+        """
+        if not text:
+            return set()
+        words = str(text).lower().split()
+        if len(words) < n:
+            return set()
+        return set(" ".join(words[i:i+n]) for i in range(len(words) - n + 1))
+
+    def update_state(self, predictions: List[Dict[str, Any]], labels: List[Optional[str]]) -> None:
+        """
+        Updates the metric's state.
+        :param predictions: List of processed prediction dicts from CreativeTextPostProcessor
+                            (e.g., [{"cleaned_text": "...", "word_count": ...}]).
+        :param labels: List of reference texts (original prompts or None).
+        """
+        
+        if len(predictions) != len(labels):
+            logger.error(f"{self.__class__.__name__}: Predictions and labels length mismatch. Skipping update for this batch.")
+            return
+
+        for pred_dict, input_text_label in zip(predictions, labels):
+            if not isinstance(pred_dict, dict) or "cleaned_text" not in pred_dict:
+                logger.warning(f"{self.__class__.__name__}: Invalid prediction format. Expected dict with 'cleaned_text'. Got: {type(pred_dict)}")
+                continue
+
+            generated_text = pred_dict["cleaned_text"]
+            if not generated_text:
+                self.total_novelty_score += 0.0
+                self.num_samples += 1
+                continue
+
+            ngram_size = self._options.get("novelty_ngram_size", 2)
+            
+            gen_ngrams = self._get_ngrams(generated_text, ngram_size)
+
+            if not gen_ngrams:
+                self.total_novelty_score += 0.0
+                self.num_samples += 1
+                continue
+
+            if input_text_label is not None and isinstance(input_text_label, str) and input_text_label.strip():
+                input_ngrams = self._get_ngrams(input_text_label, ngram_size)
+                
+                novel_ngrams = gen_ngrams - input_ngrams
+                novelty_ratio = len(novel_ngrams) / len(gen_ngrams) if len(gen_ngrams) > 0 else 0.0
+            else:
+                novelty_ratio = 1.0
+                logger.debug(f"{self.__class__.__name__}: Input text label not provided for a sample. Assuming maximal novelty for generated text.")
+
+
+            self.total_novelty_score += novelty_ratio
+            self.num_samples += 1
+            
+            self._collected_predictions_processed.append(pred_dict)
+            self._collected_labels_processed.append(input_text_label)
+
+
+    def result(self) -> Dict[str, float]:
+        """
+        Computes and returns the average novelty score.
+        :return: Dictionary with the average novelty score.
+        """
+        if self.num_samples == 0:
+            return {"novelty_score_avg": 0.0}
+        
+        avg_novelty = self.total_novelty_score / self.num_samples
+        return {"novelty_score_avg": avg_novelty}
+
+
+class CustomScriptMetric(BaseMetric):
+    """
+    A metric that delegates its state updates and result computation
+    to user-defined functions in an external Python script.
+    
+    The script should define three functions:
+    - init_state_fn(options: Dict) -> Any  (returns initial state)
+    - update_state_fn(current_state: Any, predictions: List, labels: List, options: Dict) -> Any (returns updated state)
+    - result_fn(final_state: Any, options: Dict) -> Union[float, Dict[str, float]]
+    """
+    
+    def __init__(self): # script_path, function_names, etc. will be set by set_options
+        """Initializes the CustomScriptMetric instance."""
+        super().__init__()
+        self.metric_state: Any = None
+        self.init_fn = None
+        self.update_fn = None
+        self.result_fn = None
+        self.script_path: Optional[Path] = None
+        self.metric_script_args: Dict[str, Any] = {} # Specific args for the metric script functions
+
+    def set_options(self, **options: Any) -> None:
+        """
+        Sets options for the metric, including the script path and function names.
+        :param options: Dictionary of options.
+        """
+        super().set_options(**options) # Store all options
+        
+        script_path_str = self._options.get("metric_script_path")
+        init_name = self._options.get("metric_init_function_name")
+        update_name = self._options.get("metric_update_function_name")
+        result_name = self._options.get("metric_result_function_name")
+        self.metric_script_args = self._options.get("metric_script_args", {})
+
+        if not (script_path_str and init_name and update_name and result_name):
+            raise ValueError("CustomScriptMetric requires 'metric_script_path' and all three function names "
+                             "('metric_init_function_name', 'metric_update_function_name', 'metric_result_function_name') "
+                             "in its options.")
+
+        self.script_path = Path(script_path_str)
+        if not self.script_path.is_file():
+            raise FileNotFoundError(f"Metric script not found: {self.script_path}")
+
+        self._load_custom_functions(init_name, update_name, result_name)
+        logger.info(f"CustomScriptMetric initialized with functions from {self.script_path}")
+
+
+    def _load_custom_functions(self, init_name, update_name, result_name):
+        """
+        Loads the custom metric functions from the specified script.
+        :param init_name: Name of the initialization function.
+        :param update_name: Name of the update function.
+        :param result_name: Name of the result function.
+        """
+        try:
+            # Use a unique module name to avoid conflicts if loading multiple custom metrics
+            module_name = f"custom_metric_module.{Path(self.script_path).stem}" # type: ignore
+            spec = importlib.util.spec_from_file_location(module_name, str(self.script_path))
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not create module spec for metric script {self.script_path}")
+
+            custom_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_module) # type: ignore
+
+            for fn_name_key, attr_name in [(init_name, "init_fn"), (update_name, "update_fn"), (result_name, "result_fn")]:
+                if not hasattr(custom_module, fn_name_key): # type: ignore
+                    raise AttributeError(f"Function '{fn_name_key}' not found in script '{self.script_path}'")
+                setattr(self, attr_name, getattr(custom_module, fn_name_key))
+        except Exception as e:
+            logger.error(f"Failed to load custom metric functions from '{self.script_path}': {e}", exc_info=True)
+            raise
+
+    def reset_state(self) -> None:
+        """Resets the internal state of the metric."""
+        if self.init_fn:
+            # Pass all options and specific script_args to the init function
+            combined_options = {**self._options, **self.metric_script_args}
+            self.metric_state = self.init_fn(options=combined_options)
+        else:
+            self.metric_state = None # Or some default initial state
+            logger.warning("CustomScriptMetric: init_fn not loaded, state not initialized via script.")
+
+
+    def update_state(self, predictions: List[Any], labels: List[Any]) -> None:
+        """
+        Updates the metric's state with a batch of predictions and labels.
+        :param predictions: List of model predictions for the current batch.
+        :param labels: List of ground truth labels for the current batch.
+        """
+        if self.update_fn and self.metric_state is not None:
+            # Pass all options and specific script_args to the update function
+            combined_options = {**self._options, **self.metric_script_args}
+            self.metric_state = self.update_fn(
+                current_state=self.metric_state,
+                predictions=predictions,
+                labels=labels,
+                options=combined_options
+            )
+        elif not self.update_fn:
+             logger.warning("CustomScriptMetric: update_fn not loaded, state not updated via script.")
+
+
+    def result(self) -> Union[float, Dict[str, float]]:
+        """
+        Computes and returns the final result using the result function.
+        :return: Final metric result.
+        """
+        if self.result_fn and self.metric_state is not None:
+             # Pass all options and specific script_args to the result function
+            combined_options = {**self._options, **self.metric_script_args}
+            return self.result_fn(final_state=self.metric_state, options=combined_options)
+        else:
+            logger.warning("CustomScriptMetric: result_fn not loaded or state is None. Returning default error value.")
+            return {"error": "custom_metric_not_computed"}
