@@ -4,7 +4,7 @@ evaluate==0.4.3
 bitsandbytes==0.45.3
 accelerate==1.6.0
 pandas==2.2.3
-numpy==2.2.3
+numpy
 scikit-learn==1.6.1
 pyarrow==19.0.1
 tqdm==4.67.1
