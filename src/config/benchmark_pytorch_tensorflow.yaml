@@ -1,0 +1,63 @@
+general:
+  experiment_name: "PyTorch_vs_TensorFlow_GPT2_Test"
+  output_dir: "./benchmarks_output_pt_tf_gpt2"
+  random_seed: 42
+
+tasks:
+  - name: "MMLU (Anatomy Subset - PT/TF Test)"
+    type: "multiple_choice_qa"
+    description: "Test MMLU (anatomy) con un modello PyTorch e uno TensorFlow."
+    datasets:
+      - name: "cais/mmlu"
+        source_type: "hf_hub"
+        config: "anatomy"
+        split: "validation"
+        max_samples: 10
+    handler_options:
+      prompt_builder_type: "mmlu"
+      prompt_template: |
+        Answer the following multiple-choice question about {subject} by providing only the letter of the correct option.
+        Question: {question}
+        Choices:
+        {choices_formatted_str}
+        Your answer (select one letter from A, B, C, D, etc.):
+      default_subject: "the following topic"
+      max_new_tokens: 5
+    evaluation_metrics:
+      - name: "exact_match"
+        options: { normalize: true, ignore_case: true, ignore_punct: false }
+      - name: "accuracy"
+        options: {}
+
+models:
+  - name: "gpt2-as-pytorch"
+    framework: "pytorch"
+    checkpoint: "gpt2"
+    torch_dtype: "float32"
+
+  - name: "gpt2-as-tensorflow"
+    framework: "tensorflow"
+    checkpoint: "gpt2"
+    from_pt: true
+
+model_parameters: {}
+
+evaluation:
+  log_interval: 1
+
+reporting:
+  enabled: true
+  format: "json"
+  output_dir: "./reports_pytorch_tf_gpt2"
+
+advanced:
+  batch_size: 2
+  truncation: true
+  padding: true
+  generate_max_length: 256
+  skip_special_tokens: true
+  max_new_tokens: 5
+  num_beams: 1
+  do_sample: false
+  use_cache: true
+  clean_up_tokenization_spaces: true

@@ -1,0 +1,64 @@
+general:
+  experiment_name: "ComprehensiveCustomLoadersTestGPT2"
+  output_dir: "./benchmarks_output_comprehensive_custom"
+  random_seed: 42
+
+models:
+  - name: "gpt2-via-custom-script"
+    framework: "custom_script"
+    script_path: "src/benchmark/custom_loader_scripts/my_model_functions.py"
+    function_name: "load_local_hf_model_example"
+    checkpoint: "gpt2"
+    torch_dtype_str: "float32"
+    quantization: null
+
+tasks:
+  - name: "CustomData-CustomModel-CustomTask-CustomMetric"
+    type: "custom_script_handler"
+    datasets:
+      - name: "my_single_csv_for_custom_task"
+        source_type: "custom_script"
+        script_path: "src/benchmark/custom_loader_scripts/my_dataset_functions.py"
+        function_name: "load_simple_csv_data"
+        split: "train"
+        max_samples: 5
+        dataset_specific_fields:
+          input_text: "text_content"
+          target_text: "category_label"
+        script_args:
+          data_file_path: "src/benchmark/custom_loader_scripts/data/sample_train_dataset.csv"
+
+    handler_options:
+      handler_script_path: "src/benchmark/custom_loader_scripts/my_task_handler_functions.py"
+      handler_function_name: "example_custom_batch_processor_with_internal_postproc"
+      prompt_template: "Elaborate on this idea: {input_text}\nElaboration:"
+      handler_script_args:
+        clean_prefix: "Elaboration:"
+      max_new_tokens: 30
+
+    evaluation_metrics:
+      - name: "custom_script_metric"
+        options:
+          metric_script_path: "src/benchmark/custom_loader_scripts/my_metrics_functions.py"
+          metric_init_function_name: "init_avg_pred_length_state"
+          metric_update_function_name: "update_avg_pred_length_state"
+          metric_result_function_name: "result_avg_pred_length"
+          metric_script_args:
+            result_key_name: "custom_avg_words"
+      - name: "rouge"
+        options:
+          metrics: ["rouge1"]
+          stats: ["f"]
+
+evaluation:
+  log_interval: 1
+
+reporting:
+  enabled: true
+  format: "json"
+
+advanced:
+  batch_size: 2
+  generate_max_length: 128
+  truncation: true
+  padding: true
