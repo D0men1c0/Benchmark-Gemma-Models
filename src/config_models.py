@@ -83,7 +83,8 @@ class ModelConfig(BaseModel):
     script_path: Optional[str] = None
     function_name: Optional[str] = None
     script_args: Optional[Dict[str, Any]] = None
-    torch_dtype_str: Optional[str] = None 
+    torch_dtype_str: Optional[str] = None
+    cleanup_model_cache_after_run: Optional[bool] = False
 
 class ModelParamsConfig(BaseModel):
     # Configuration for model parameters
