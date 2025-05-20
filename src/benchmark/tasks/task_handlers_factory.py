@@ -8,7 +8,9 @@ from .concrete_task_handlers import (
     MathReasoningGenerationTaskHandler,
     TextPairClassificationTaskHandler,
     GlueClassificationPromptingTaskHandler,
-    GlueTextPairPromptingTaskHandler
+    GlueTextPairPromptingTaskHandler,
+    CreativeTextGenerationTaskHandler,
+    CustomScriptTaskHandler,
 )
 
 class TaskHandlerFactory:
@@ -23,6 +25,8 @@ class TaskHandlerFactory:
         "text_pair_classification": TextPairClassificationTaskHandler, # For pretrained logits models
         "glue_classification_prompting": GlueClassificationPromptingTaskHandler,
         "glue_text_pair_prompting": GlueTextPairPromptingTaskHandler,
+        "creative_text_generation": CreativeTextGenerationTaskHandler,
+        "custom_script": CustomScriptTaskHandler,
     }
 
     @classmethod

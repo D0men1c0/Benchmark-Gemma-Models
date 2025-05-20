@@ -1,3 +1,5 @@
+import importlib
+from pathlib import Path
 import torch
 from typing import Dict, Any, Optional, Tuple, List
 from ..postprocessing.postprocessor_factory import PostProcessorFactory
@@ -675,3 +677,198 @@ class GlueTextPairPromptingTaskHandler(GlueClassificationPromptingTaskHandler): 
                  item_data["dataset_config_name"] = self.advanced_args["dataset_config_name"]
             batch_items.append(item_data)
         return batch_items, labels_original
+    
+
+class CreativeTextGenerationTaskHandler(TaskHandler):
+    """
+    Task handler for creative text generation tasks.
+    Generates creative text based on an input prompt.
+    """
+
+    def __init__(self, model: Any, tokenizer: Any, device: str, advanced_args: Optional[Dict[str, Any]] = None):
+        """
+        Initialize the CreativeTextGenerationTaskHandler.
+        :param model: Loaded model instance.
+        :param tokenizer: Loaded tokenizer instance.
+        :param device: Device to run the model on.
+        :param advanced_args: Dictionary of advanced arguments from configuration,
+                              including global settings and task-specific handler_options.
+        :param advanced_args: Dictionary of advanced arguments from configuration
+        """
+        super().__init__(model, tokenizer, device, advanced_args)
+        prompt_template = self.advanced_args.get("prompt_template", "Write a creative piece about: {input_text}")
+        builder_type = self.advanced_args.get("prompt_builder_type", "default")
+        
+        builder_handler_args = self.advanced_args.copy()
+        if "dataset_name" in self.advanced_args:
+            builder_handler_args["dataset_name"] = self.advanced_args["dataset_name"]
+
+        self.prompt_builder = PromptBuilderFactory.get_builder(
+            builder_type=builder_type,
+            prompt_template=prompt_template,
+            handler_args=builder_handler_args
+        )
+        self.logger.info(f"CreativeTextGenerationTaskHandler initialized with prompt_builder='{builder_type}'.")
+
+    def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[str], List[Any]]:
+        """
+        Process a batch of creative text generation tasks.
+
+        :param batch: Dictionary containing the batch data.
+                      Expected key: "input_text" (il tema o l'incipit).
+                      Potrebbe anche avere "target_text" se ci sono esempi di riferimento (opzionale).
+        :return: Tuple of (list_of_generated_texts, list_of_reference_texts_or_inputs).
+                 Se non ci sono target_text, reference_texts potrebbe essere una lista di None o degli input stessi.
+        """
+        input_prompts = _ensure_list(batch.get("input_text", []))
+        reference_texts = _ensure_list(batch.get("target_text", [None] * len(input_prompts)))
+
+        if not input_prompts:
+            self.logger.warning("CreativeTextGenerationTaskHandler: No input_text found in batch.")
+            return [], []
+
+        batch_items_for_prompting = [{"input_text": text} for text in input_prompts]
+        prompts_for_model = self.prompt_builder.build_prompts(batch_items_for_prompting)
+
+        if not prompts_for_model:
+            self.logger.warning("CreativeTextGenerationTaskHandler: PromptBuilder returned no prompts.")
+            return [], reference_texts
+
+        generated_texts = self._generate_text(prompts_for_model)
+
+        return generated_texts, reference_texts
+    
+class CustomScriptTaskHandler(TaskHandler):
+    """
+    A task handler that delegates batch processing to a user-defined function
+    in an external Python script.
+    """
+    def __init__(self, model: Any, tokenizer: Any, device: str, advanced_args: Optional[Dict[str, Any]] = None):
+        """
+        Initialize the CustomScriptTaskHandler.
+        :param model: Loaded model instance.
+        :param tokenizer: Loaded tokenizer instance.
+        :param device: Device to run the model on.
+        :param advanced_args: Dictionary of advanced arguments from configuration,
+                              including global settings and task-specific handler_options.
+        """
+        super().__init__(model, tokenizer, device, advanced_args)
+
+        script_path_str = self.advanced_args.get("handler_script_path")
+        self.function_name = self.advanced_args.get("handler_function_name")
+        self.handler_script_args = self.advanced_args.get("handler_script_args", {})
+
+        if not script_path_str or not self.function_name:
+            raise ValueError("CustomScriptTaskHandler requires 'handler_script_path' and 'handler_function_name' in handler_options.")
+
+        self.script_path = Path(script_path_str)
+        if not self.script_path.is_file():
+            raise FileNotFoundError(f"Handler script not found: {self.script_path}")
+
+        self._load_custom_function()
+        self.logger.info(f"CustomScriptTaskHandler initialized to use {self.function_name} from {self.script_path}")
+
+    def _load_custom_function(self):
+        """
+        Load the custom function from the specified script.
+        The function is expected to have the following signature:
+        `my_function(batch, model, tokenizer, device, advanced_args, script_args) -> Tuple[List[Any], List[Any]]`
+        """
+        try:
+            spec = importlib.util.spec_from_file_location(f"custom_handler_module.{self.function_name}", str(self.script_path))
+            if spec is None or spec.loader is None: # Added check for spec.loader
+                raise ImportError(f"Could not create module spec for handler script {self.script_path}")
+            
+            custom_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_module) # type: ignore
+
+            if not hasattr(custom_module, self.function_name):
+                raise AttributeError(f"Function '{self.function_name}' not found in script '{self.script_path}'")
+            
+            self.custom_process_batch_fn = getattr(custom_module, self.function_name)
+        except Exception as e:
+            self.logger.error(f"Failed to load custom handler function '{self.function_name}' from '{self.script_path}': {e}", exc_info=True)
+            raise
+
+
+    def process_batch(self, batch: Dict[str, Any]) -> Tuple[List[Any], List[Any]]:
+        """
+        Processes a batch by calling the custom user-defined function to get prompts,
+        then uses the framework-aware _generate_text method for model inference,
+        and finally applies post-processing.
+
+        The custom function (self.custom_process_batch_fn) is expected to have a signature like:
+        `my_custom_logic(batch, model, tokenizer, device, advanced_args, script_args) -> Tuple[List[str], List[Any]]`
+        It should return a tuple: (list_of_prompt_strings, list_of_raw_labels).
+        The 'model', 'tokenizer', 'device' arguments are passed to the custom function for flexibility,
+        though it might not use them if it's only generating prompts.
+
+        :param batch: Dictionary containing the batch data.
+        :return: Tuple of (processed_predictions, processed_labels).
+        """
+        if not hasattr(self, 'custom_process_batch_fn') or self.custom_process_batch_fn is None:
+            self.logger.error(f"Custom batch processing function '{self.function_name}' not loaded for CustomScriptTaskHandler.")
+            return [], []
+
+        try:
+            output_from_custom_fn = self.custom_process_batch_fn(
+                batch=batch, 
+                model=self.model, 
+                tokenizer=self.tokenizer, 
+                device=self.device,
+                advanced_args=self.advanced_args, 
+                script_args=self.handler_script_args
+            )
+
+            if not (isinstance(output_from_custom_fn, tuple) and len(output_from_custom_fn) == 2):
+                self.logger.error(
+                    f"Custom handler function '{self.function_name}' returned an unexpected type: {type(output_from_custom_fn)}. "
+                    "Expected a tuple of (list_of_prompts, list_of_raw_labels)."
+                )
+                return [], []
+
+            prompts_to_generate, raw_labels = output_from_custom_fn
+
+            if not isinstance(prompts_to_generate, list):
+                self.logger.error(
+                    f"The first element (prompts) returned by custom function '{self.function_name}' is not a list "
+                    f"(type: {type(prompts_to_generate)}). Cannot proceed with generation."
+                )
+                # Pass raw_labels through for consistent error handling if needed by metrics
+                return [], raw_labels if isinstance(raw_labels, list) else []
+
+
+            if not isinstance(raw_labels, list):
+                self.logger.warning(
+                    f"The second element (labels) returned by custom function '{self.function_name}' is not a list "
+                    f"(type: {type(raw_labels)}). Using empty list for labels."
+                )
+                raw_labels = []
+
+
+            raw_predictions: List[str] = []
+            if not prompts_to_generate:
+                self.logger.info(f"Custom handler function '{self.function_name}' returned an empty list of prompts. No text will be generated.")
+                # Predictions will be an empty list, labels will be whatever the custom function returned.
+            else:
+                # Ensure all prompts are strings
+                if not all(isinstance(p, str) for p in prompts_to_generate):
+                    self.logger.error(
+                        f"Not all items in the prompts list returned by custom function '{self.function_name}' are strings. "
+                        "Cannot proceed with generation."
+                    )
+                    return [], raw_labels
+                
+                # Use the framework-aware _generate_text method from the base TaskHandler
+                self.logger.debug(f"Calling self._generate_text with {len(prompts_to_generate)} prompts for framework {self.framework_type}.")
+                raw_predictions = self._generate_text(prompts_to_generate)
+
+            # Apply post-processing to the generated predictions and the labels from custom function
+            return self._apply_post_processing(raw_predictions, raw_labels, batch)
+
+        except Exception as e:
+            self.logger.error(
+                f"Error during execution of custom handler function '{self.function_name}' or "
+                f"its subsequent generation/post-processing steps: {e}", exc_info=True
+            )
+            return [], []
