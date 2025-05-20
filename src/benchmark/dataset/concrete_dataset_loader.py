@@ -1,3 +1,5 @@
+import importlib
+from pathlib import Path
 from typing import Dict, Any, Iterable, List, Optional, Callable
 from datasets import load_dataset as hf_load_dataset
 from datasets import Dataset, IterableDataset
@@ -52,6 +54,7 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
                  config: Optional[str] = None, split: str = "train",
                  data_dir: Optional[str] = None, streaming: bool = False,
                  dataset_specific_fields: Optional[Dict[str, str]] = None,
+                 loader_args: Optional[Dict[str, Any]] = None,
                  max_samples: Optional[int] = None, **loader_kwargs):
         """
         Initializes the dataset loader with the specified parameters.
@@ -77,6 +80,12 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
         self.dataset_specific_fields = dataset_specific_fields or {}
         self.loader_kwargs = loader_kwargs
         self.max_samples = max_samples
+
+        if loader_args and isinstance(loader_args, dict):
+            self.loader_kwargs.update(loader_args)
+        
+        logger.debug(f"ConcreteDatasetLoader for '{name}' initialized. "
+                f"Effective loader_kwargs for hf_load_dataset: {self.loader_kwargs}")
 
     @classmethod
     def register_source(cls, source_type: str, loader_fn: Callable):
@@ -329,3 +338,143 @@ class ConcreteDatasetLoader(BaseDatasetLoader):
                 return general_map[standard_role]
         
         return None
+    
+class CustomScriptDatasetLoader(BaseDatasetLoader):
+    """
+    Loads a dataset by executing a user-defined function from a specified Python script.
+    It expects 'script_path' and 'function_name' to be present in the kwargs passed
+    to its constructor, which originate from the YAML configuration.
+    """
+    def __init__(self, 
+                 name: str, 
+                 source_type: str, # For consistency, though "custom_script" is implied
+                 **loader_init_kwargs): # Catches ALL other args from YAML via factory
+
+        # If BaseDatasetLoader has an __init__ that takes these, call it.
+        # Otherwise, assign them directly.
+        # super().__init__(name, source_type, **loader_init_kwargs) 
+        
+        self.name = name
+        self.source_type = source_type
+        self.logger = setup_logger(f"{self.__class__.__name__}.{self.name}") # More specific logger
+
+        # Extract necessary parameters from loader_init_kwargs
+        script_path_str = loader_init_kwargs.get("script_path")
+        self.function_name = loader_init_kwargs.get("function_name")
+
+        if not script_path_str:
+            raise ValueError(f"'{self.__class__.__name__}' for dataset '{name}' requires 'script_path' in its configuration.")
+        if not self.function_name:
+            raise ValueError(f"'{self.__class__.__name__}' for dataset '{name}' requires 'function_name' in its configuration.")
+
+        self.script_path = Path(script_path_str)
+        if not self.script_path.is_file():
+            raise FileNotFoundError(f"Custom dataset script not found: {self.script_path}")
+
+        # Store other relevant parameters from YAML, providing defaults
+        self.config_param = loader_init_kwargs.get("config") # Dataset subset config
+        self.split_param = loader_init_kwargs.get("split", "train")
+        self.data_dir_param = loader_init_kwargs.get("data_dir")
+        self.streaming = loader_init_kwargs.get("streaming", False)
+        self.dataset_specific_fields = loader_init_kwargs.get("dataset_specific_fields", {})
+        self.max_samples = loader_init_kwargs.get("max_samples")
+        self.script_args = loader_init_kwargs.get("script_args", {})
+        
+        # Store any other unexpected kwargs if BaseDatasetLoader's super init doesn't.
+        # This helps if BaseDatasetLoader uses **kwargs.
+        self.other_kwargs = {k: v for k, v in loader_init_kwargs.items() if k not in [
+            "script_path", "function_name", "config", "split", "data_dir", "streaming",
+            "dataset_specific_fields", "max_samples", "script_args"
+        ]}
+
+
+        self.logger.info(
+            f"Initialized CustomScriptDatasetLoader for '{self.name}': "
+            f"script='{self.script_path}', function='{self.function_name}'"
+        )
+        self.logger.debug(f"  Split: {self.split_param}, Data Dir: {self.data_dir_param}, Max Samples: {self.max_samples}")
+        self.logger.debug(f"  Script Args: {self.script_args}")
+        self.logger.debug(f"  Dataset Specific Fields: {self.dataset_specific_fields}")
+        self.logger.debug(f"  Other Kwargs received by init: {self.other_kwargs}")
+
+
+    def load(self, task_type: Optional[str] = None) -> Iterable:
+        self.logger.info(f"Loading custom dataset '{self.name}' using script '{str(self.script_path)}' and function '{self.function_name}'")
+
+        try:
+            module_name = f"custom_dataset_module_{self.name.replace('-', '_')}_{self.function_name}"
+            spec = importlib.util.spec_from_file_location(module_name, str(self.script_path))
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not create module spec for {self.script_path}")
+
+            custom_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_module) # type: ignore
+
+            if not hasattr(custom_module, self.function_name):
+                raise AttributeError(f"Function '{self.function_name}' not found in script '{str(self.script_path)}'")
+
+            load_fn = getattr(custom_module, self.function_name)
+
+            # Prepare arguments to pass to the user's script function
+            args_for_user_function = {
+                "split": self.split_param,
+                "data_file_path": self.data_dir_param, 
+                # Add any other parameters the user function explicitly expects by name
+            }
+            # Merge script_args from YAML (these are specific to the user's function)
+            if self.script_args:
+                args_for_user_function.update(self.script_args)
+            
+            # Pass only what the user function expects, or pass all if it takes **kwargs
+            self.logger.debug(f"Calling custom dataset function '{self.function_name}' with args: {args_for_user_function}")
+            dataset = load_fn(**args_for_user_function) # User function must accept these
+
+            if dataset is None:
+                raise ValueError(f"Custom dataset function '{self.function_name}' returned None.")
+
+        except Exception as e:
+            self.logger.error(f"Failed to load dataset from custom script '{str(self.script_path)}': {e}", exc_info=True)
+            raise
+
+        # Apply cutoff
+        if self.max_samples is not None and self.max_samples > 0:
+            # ... (cutoff logic as provided in your previous snippet, using self.name, self.max_samples) ...
+            original_length_info = "unknown (iterable)"
+            if hasattr(dataset, "__len__"):
+                original_length_info = str(len(dataset))
+
+            if isinstance(dataset, IterableDataset):
+                self.logger.info(f"Applying cutoff: taking first {self.max_samples} samples from custom iterable dataset '{self.name}'. Original size: {original_length_info}.")
+                dataset = dataset.take(self.max_samples)
+            elif hasattr(dataset, "select") and callable(dataset.select):
+                current_len = len(dataset)
+                if current_len > self.max_samples:
+                    self.logger.info(f"Applying cutoff: selecting first {self.max_samples} samples from custom map-style dataset '{self.name}'. Original size: {current_len}.")
+                    dataset = dataset.select(range(self.max_samples))
+            elif isinstance(dataset, list):
+                if len(dataset) > self.max_samples:
+                    self.logger.info(f"Applying cutoff: taking first {self.max_samples} samples from custom list-based dataset '{self.name}'. Original size: {len(dataset)}.")
+                    dataset = dataset[:self.max_samples]
+
+        # Normalize dataset
+        # This part needs ConcreteDatasetLoader to be importable and its _normalize_dataset to be callable.
+        # A cleaner way would be to have a standalone normalizer utility.
+        if task_type:
+            # Assuming ConcreteDatasetLoader's __init__ can handle being called with just these.
+            # If not, this temporary instantiation needs to match ConcreteDatasetLoader's required args.
+            temp_normalizer_loader = ConcreteDatasetLoader(
+                name=self.name,
+                source_type="temp_for_norm", # Placeholder
+                dataset_specific_fields=self.dataset_specific_fields
+                # Add other mandatory params for ConcreteDatasetLoader.__init__ if any, or make them optional.
+            )
+            normalized_dataset = temp_normalizer_loader._normalize_dataset(dataset, task_type)
+        else:
+            normalized_dataset = dataset
+            
+        self.logger.info(f"Custom dataset '{self.name}' loaded and potentially normalized for task_type '{task_type}'.")
+        return normalized_dataset
+
+    @classmethod
+    def register_source(cls, source_type: str, loader_fn: Callable):
+        logger.warning("CustomScriptDatasetLoader uses dynamic script loading; direct 'register_source' might not be typical.")

@@ -37,7 +37,7 @@ def load_local_hf_model_example(
     logger.info(f"  Model Load Args: {model_load_args}")
     logger.info(f"  Other Script Args: {kwargs}")
 
-    is_local_path = Path(model_path).is_dir() # Controlla se è una directory esistente
+    is_local_path = Path(model_path).is_dir()
     if is_local_path:
         logger.info(f"  Interpreting '{model_path}' as a local directory path.")
     else:
