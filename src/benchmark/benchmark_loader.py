@@ -210,22 +210,28 @@ class BenchmarkRunner:
                 # Log intermediate metrics
                 if log_interval_to_use > 0 and batch_num % log_interval_to_use == 0:
                     intermediate_results = {}
-                    # Accessing evaluator._metrics_instances directly for logging purposes.
-                    # Consider adding a public method to Evaluator if this feels too coupled.
-                    for metric_name, metric_instance in evaluator._metrics_instances.items():
+                    for metric_conf_log, metric_instance_log in evaluator._metric_instances_with_config:
+                        metric_name_for_log = metric_conf_log.get("name", f"unknown_metric_idx{batch_num}") 
                         try:
-                            current_value = metric_instance.result()
-                            # Simple formatting for the log
-                            if isinstance(current_value, float):
-                                formatted_value = f"{current_value:.4f}"
+                            current_value = metric_instance_log.result()
+                            
+                            if metric_name_for_log == "custom_script" and isinstance(current_value, dict):
+                                for sub_key, sub_val in current_value.items():
+                                    formatted_sub_val = f"{sub_val:.4f}" if isinstance(sub_val, float) else str(sub_val)
+                                    intermediate_results[sub_key] = formatted_sub_val 
                             elif isinstance(current_value, dict):
-                                formatted_value = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in current_value.items()])
+                                formatted_value_dict = {}
+                                for k, v_val in current_value.items():
+                                     formatted_value_dict[k] = f"{v_val:.4f}" if isinstance(v_val, float) else str(v_val)
+                                intermediate_results[metric_name_for_log] = formatted_value_dict
+                            elif isinstance(current_value, float):
+                                intermediate_results[metric_name_for_log] = f"{current_value:.4f}"
                             else:
-                                formatted_value = str(current_value)
-                            intermediate_results[metric_name] = formatted_value
+                                intermediate_results[metric_name_for_log] = str(current_value)
+
                         except Exception as e:
-                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name}': {e}")
-                            intermediate_results[metric_name] = "Error"
+                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name_for_log}': {e}")
+                            intermediate_results[metric_name_for_log] = "Error"
                     
                     if intermediate_results:
                         log_msg_parts = [f"{name}: {value}" for name, value in intermediate_results.items()]
