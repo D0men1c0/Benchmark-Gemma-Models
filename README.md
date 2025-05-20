@@ -37,75 +37,31 @@ The architecture is designed for clarity, maintainability, and extreme extensibi
 
 ### Directory Structure
 ```bash
-├── 📦 src /
-│    ├── 📂 config/
-│    │   ├── benchmark_config.yaml         # Main Pydantic-driven benchmark configuration
-│    │   ├── advanced_custom_benchmark_config.yaml # Example showcasing custom script usage
-│    │
-│    ├── 📂 benchmark/                    # Core benchmarking logic
-│    │   ├── benchmark_loader.py           # Main BenchmarkRunner orchestrating the flow
-│    │   │
-│    │   ├── 📂 models/                   # Model loading and management
-│    │   │   ├── base_model_loader.py      # Abstract model loader interface
-│    │   │   ├── concrete_models.py        # Hugging Face, PyTorch, TensorFlow, CustomScript loaders
-│    │   │   └── models_factory.py         # ModelLoaderFactory
-│    │   │
-│    │   ├── 📂 dataset/                   # Dataset loading and normalization
-│    │   │   ├── base_dataset_loader.py     # Abstract dataset loader interface
-│    │   │   ├── concrete_dataset_loader.py # Handles HF Hub, local, streaming, field normalization, CustomScript
-│    │   │   └── dataset_factory.py         # DatasetFactory
-│    │   │
-│    │   ├── 📂 prompting/                 # Prompt engineering and building
-│    │   │   ├── base_prompt_builder.py      # Abstract prompt builder interface
-│    │   │   ├── concrete_prompt_builders.py # TemplateBased, MMLU, Translation builders etc.
-│    │   │   └── prompt_builder_factory.py   # PromptBuilderFactory
-│    │   │
-│    │   ├── 📂 tasks/                     # Task-specific prompting and generation logic
-│    │   │   ├── base_task_handler.py       # Abstract task handler interface
-│    │   │   ├── concrete_task_handlers.py  # Handlers for various tasks (QA, Math, Summarization, CustomScript)
-│    │   │   └── task_handlers_factory.py   # TaskHandlerFactory
-│    │   │
-│    │   ├── 📂 postprocessing/             # Task-specific output post-processing
-│    │   │   ├── base_postprocessor.py       # Abstract post-processor interface
-│    │   │   ├── concrete_postprocessors.py  # Implementations for MMLU, GSM8K, CustomScript, regex-based
-│    │   │   └── postprocessor_factory.py    # PostProcessorFactory
-│    │   │
-│    │   ├── 📂 evaluation/                 # Evaluation and metrics computation
-│    │   │   ├── evaluator.py                # Evaluator managing stateful metrics lifecycle
-│    │   │   └── 📂 metrics/                 # Metrics computation
-│    │   │       ├── base_metrics.py         # Abstract stateful metric interface
-│    │   │       ├── concrete_metrics.py     # Stateful implementations of various metrics, CustomScript
-│    │   │       └── metric_factory.py       # MetricFactory
-│    │   │
-│    │   └── 📂 reporting/                 # Results saving and reporting
-│    │       └── file_manager.py            # Saves results in JSON, CSV, PDF formats
-│    │
-│    ├── 📂 scripts/                       # Execution entry points
-│    │   └── run_benchmark.py               # Main script to run benchmarks
-│    │
-│    ├── 📂 utils/                         # Shared utilities
-│    │   └── logger.py                      # Unified and detailed logging system
-│    │
-│    ├── 📂 custom_loader_scripts/         # Directory for user-defined Python scripts
-│    │   ├── my_dataset_functions.py        # Example: Custom dataset loading functions
-│    │   ├── my_model_functions.py          # Example: Custom model loading functions
-│    │   ├── my_task_handler_functions.py   # Example: Custom task processing logic
-│    │   ├── my_post_processor_functions.py # Example: Custom post-processing functions
-│    │   ├── my_metrics_functions.py        # Example: Custom metric calculation functions
-│    │   └── 📂 data/                      # Example: Local data for custom datasets
-│    │
-│    ├── config_models.py                  # Pydantic models for type-safe configuration
-│    └── generate_default_config.py         # Utility to generate a default configuration file
+├── 📦 src/                     # Main source code
+│   ├── 📂 benchmark/           # Core benchmarking logic (models, datasets, tasks, evaluation, etc.)
+│   │   ├── 📂 dataset/         # Dataset loading, normalization, and custom data functions
+│   │   ├── 📂 evaluation/      # Metrics computation and evaluation orchestration
+│   │   ├── 📂 models/          # Model loading (HF, PyTorch, TF, Custom) and quantization
+│   │   ├── 📂 postprocessing/  # Output cleaning and structuring
+│   │   ├── 📂 prompting/       # Prompt engineering and building strategies
+│   │   ├── 📂 reporting/       # Saving benchmark results
+│   │   └── 📂 tasks/           # Task-specific logic and handlers
+│   ├── 📂 config/              # YAML configuration files for benchmarks
+│   ├── 📂 custom_loader_scripts/ # User-defined Python scripts for custom components
+│   │   └── 📂 data/            # Sample data for custom loader examples
+│   ├── 📂 scripts/             # Execution entry points (e.g., run_benchmark.py)
+│   ├── 📂 utils/               # Shared utilities (e.g., logger)
+│   ├── config_models.py        # Pydantic models for configuration validation
+│   └── generate_default_config.py # Script to create a default config file
 │
-├── 📦 visualize/                          # Visualization scripts and dashboard
-│   ├── dashboard.py                        # Streamlit dashboard application
-│   ├── data_utils.py                       # Utilities for dashboard data processing
-│   └── plotting_results.ipynb              # Jupyter notebook for plotting results
+├── 📦 visualize/               # Scripts and dashboard for results visualization
+│   ├── dashboard.py            # Streamlit dashboard application
+│   ├── data_utils.py           # Data processing for the dashboard
+│   └── plotting_results.ipynb  # Jupyter notebook for plotting
 │
-├── 📓hello_world.ipynb                    # Automated script on Colab
-│
-├── 📄LICENSE                             # Apache 2.0 License
-└── 📄README.md                           # This file
+├── 📓 hello_world.ipynb        # Quick start/demo notebook for Colab
+├── 📄 LICENSE                  # Apache 2.0 License
+└── 📄 README.md                # This file
 ```
 
 ---
