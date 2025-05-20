@@ -81,22 +81,28 @@ class BenchmarkRunner:
         quantization = model_cfg.quantization
         self.logger.info(f"--- Loading Model: {model_name} ({framework}, Quant: {quantization}) ---")
         try:
-            model_load_params = self.config.model_parameters.dict(exclude_none=True)
+            model_specific_params = model_cfg.dict(exclude_none=True)
+            global_model_params = self.config.model_parameters.dict(exclude_none=True)
+
+            self.logger.debug(f"Model specific params for '{model_name}': {model_specific_params.keys()}")
+            self.logger.debug(f"Global model params: {global_model_params.keys()}")
+
             model_loader = ModelLoaderFactory.get_model_loader(
                 model_name=model_cfg.checkpoint or model_name,
                 framework=framework,
-                quantization=quantization, 
-                **model_load_params
+                quantization=quantization,
+                model_specific_config_params=model_specific_params,
+                global_model_creation_params=global_model_params
             )
             model, tokenizer = model_loader.load(quantization=quantization)
 
             device_placement_handled_by_loader = False
             if model_cfg.quantization in ["4bit", "8bit"]: # Check original config
                 device_placement_handled_by_loader = True
-                self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
+                #self.logger.info(f"Model '{model_name}' ({model_cfg.quantization}) is bitsandbytes quantized. Device placement handled by loader.")
             elif hasattr(model, 'hf_device_map') and model.hf_device_map is not None:
                 device_placement_handled_by_loader = True
-                self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
+                #self.logger.info(f"Model '{model_name}' was loaded with a device map. Device placement handled by loader. Device map: {model.hf_device_map}")
 
             if not isinstance(model, torch.nn.DataParallel) and hasattr(model, 'to') and not device_placement_handled_by_loader:
                 self.logger.info(f"Moving model '{model_name}' to device '{self.device}'.")
@@ -204,22 +210,28 @@ class BenchmarkRunner:
                 # Log intermediate metrics
                 if log_interval_to_use > 0 and batch_num % log_interval_to_use == 0:
                     intermediate_results = {}
-                    # Accessing evaluator._metrics_instances directly for logging purposes.
-                    # Consider adding a public method to Evaluator if this feels too coupled.
-                    for metric_name, metric_instance in evaluator._metrics_instances.items():
+                    for metric_conf_log, metric_instance_log in evaluator._metric_instances_with_config:
+                        metric_name_for_log = metric_conf_log.get("name", f"unknown_metric_idx{batch_num}") 
                         try:
-                            current_value = metric_instance.result()
-                            # Simple formatting for the log
-                            if isinstance(current_value, float):
-                                formatted_value = f"{current_value:.4f}"
+                            current_value = metric_instance_log.result()
+                            
+                            if metric_name_for_log == "custom_script" and isinstance(current_value, dict):
+                                for sub_key, sub_val in current_value.items():
+                                    formatted_sub_val = f"{sub_val:.4f}" if isinstance(sub_val, float) else str(sub_val)
+                                    intermediate_results[sub_key] = formatted_sub_val 
                             elif isinstance(current_value, dict):
-                                formatted_value = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in current_value.items()])
+                                formatted_value_dict = {}
+                                for k, v_val in current_value.items():
+                                     formatted_value_dict[k] = f"{v_val:.4f}" if isinstance(v_val, float) else str(v_val)
+                                intermediate_results[metric_name_for_log] = formatted_value_dict
+                            elif isinstance(current_value, float):
+                                intermediate_results[metric_name_for_log] = f"{current_value:.4f}"
                             else:
-                                formatted_value = str(current_value)
-                            intermediate_results[metric_name] = formatted_value
+                                intermediate_results[metric_name_for_log] = str(current_value)
+
                         except Exception as e:
-                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name}': {e}")
-                            intermediate_results[metric_name] = "Error"
+                            self.logger.debug(f"Could not compute intermediate result for metric '{metric_name_for_log}': {e}")
+                            intermediate_results[metric_name_for_log] = "Error"
                     
                     if intermediate_results:
                         log_msg_parts = [f"{name}: {value}" for name, value in intermediate_results.items()]

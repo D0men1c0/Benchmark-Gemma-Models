@@ -1,0 +1,149 @@
+general:
+  experiment_name: "Comprehensive_Benchmark_Suite_EN"
+  output_dir: "./benchmarks_output_comprehensive_en"
+  random_seed: 42
+
+models:
+  - name: "gemma-2b-hf"
+    framework: "huggingface"
+    checkpoint: "google/gemma-2b"
+    quantization: "4bit" # Example of quantization
+    torch_dtype: "bfloat16"
+    offloading: true # For larger models
+  - name: "gpt2-hf-standard"
+    framework: "huggingface"
+    checkpoint: "gpt2"
+    torch_dtype: "float32"
+  - name: "gpt2-pytorch-loader" # Explicitly uses PyTorchModelLoader via framework key
+    framework: "pytorch"
+    checkpoint: "gpt2"
+    torch_dtype: "float32"
+  - name: "gpt2-tensorflow-loader" # Explicitly uses TensorFlowModelLoader
+    framework: "tensorflow"
+    checkpoint: "gpt2"
+    from_pt: true 
+  - name: "gpt2-custom-script-loader"
+    framework: "custom_script"
+    script_path: "src/benchmark/custom_loader_scripts/my_model_functions.py"
+    function_name: "load_local_hf_model_example"
+    checkpoint: "gpt2" # 'checkpoint' is the arg name in the script
+    model_path: "gpt2" # 'model_path' is the arg name in the script
+    torch_dtype_str: "float32" # 'torch_dtype_str' in the script
+    quantization: null # 'quantization' in the script
+
+tasks:
+  - name: "CreativeThemeElaboration_EN"
+    type: "custom_script" # Uses CustomScriptTaskHandler
+    description: "Evaluate creative elaboration of given themes using custom scripts."
+    datasets:
+      - name: "sample_themes_for_elaboration_en"
+        source_type: "custom_script"
+        script_path: "src/benchmark/custom_loader_scripts/my_dataset_functions.py"
+        function_name: "load_simple_csv_data"
+        split: "train"
+        max_samples: 8 # Small number for quick testing
+        script_args:
+          data_file_path: "src/benchmark/custom_loader_scripts/data/sample_train_dataset.csv"
+    handler_options:
+      handler_script_path: "src/benchmark/custom_loader_scripts/my_task_handler_functions.py"
+      handler_function_name: "creative_elaboration_processor" # As designed
+      handler_script_args: {} # No specific args for the handler script itself in this example
+      prompt_template: "Expand on this idea with a creative paragraph:\nIdea: {theme}\n\nCreative Paragraph:"
+      max_new_tokens: 60
+      num_beams: 1 # Use 1 for speed, can increase for quality
+      do_sample: true
+      temperature: 0.7
+      postprocessor_key: "custom_script"
+      postprocessor_script_path: "src/benchmark/custom_loader_scripts/my_post_processor_functions.py"
+      postprocessor_function_name: "clean_elaboration_output"
+      postprocessor_script_args:
+        elaboration_prefix_to_remove: "Creative Paragraph:"
+    evaluation_metrics:
+      - name: "rouge"
+        options:
+          metrics: ["rouge1", "rougeL"]
+          stats: ["f"]
+      - name: "custom_script" # For average_elaboration_length
+        options:
+          metric_script_path: "src/benchmark/custom_loader_scripts/my_metrics_functions.py"
+          metric_init_function_name: "init_avg_pred_length_state"
+          metric_update_function_name: "update_avg_pred_length_state"
+          metric_result_function_name: "result_avg_pred_length"
+          metric_script_args:
+            result_key_name: "average_elaboration_length"
+      - name: "custom_script" # For keyword_match
+        options:
+          metric_script_path: "src/benchmark/custom_loader_scripts/my_metrics_functions.py"
+          metric_init_function_name: "init_keyword_match_state"
+          metric_update_function_name: "update_keyword_match_state"
+          metric_result_function_name: "result_keyword_match"
+          metric_script_args:
+            keywords_to_match: ["theme", "develop", "idea", "explore", "story"]
+
+  - name: "GSM8K_EN"
+    type: "math_reasoning_generation" # Uses MathReasoningGenerationTaskHandler
+    description: "Grade school math problems. Evaluates reasoning and final answer."
+    datasets:
+      - name: "gsm8k"
+        source_type: "hf_hub"
+        config: "main" # Or specific subset like "socratic"
+        split: "test"
+        max_samples: 10 # Small number for quick testing
+        # dataset_specific_fields are usually handled by the standard loader for gsm8k
+    handler_options:
+      prompt_template: "Solve the following math problem. Show your reasoning step-by-step. Conclude with the final numerical answer formatted as ####<number>.\n\nProblem: {input_text}\n\nSolution:"
+      postprocessor_key: "gsm8k" # Standard post-processor for extracting final number
+      max_new_tokens: 200 # Allow space for reasoning
+    evaluation_metrics:
+      - name: "exact_match" # On the extracted final number
+        options: {}
+      - name: "rouge" # On the full reasoning text
+        options:
+          metrics: ["rougeL"]
+          stats: ["f"]
+
+  - name: "MMLU_Anatomy_EN"
+    type: "multiple_choice_qa" # Uses MultipleChoiceQATaskHandler
+    description: "MMLU (anatomy subset) - multiple choice question answering."
+    datasets:
+      - name: "cais/mmlu"
+        source_type: "hf_hub"
+        config: "anatomy"
+        split: "test" # Using 'test' split for MMLU is common for reported scores
+        max_samples: 10 # Small number for quick testing
+    handler_options:
+      prompt_builder_type: "mmlu" # Standard MMLU prompt builder
+      # Default MMLU prompt template in MMLUPromptBuilder will be used if not specified.
+      # Or provide a custom one:
+      # prompt_template: "Question: {question}\nChoices:\n{choices_formatted_str}\nAnswer (letter only):"
+      postprocessor_key: "mmlu_generation" # Standard post-processor for MMLU
+      max_new_tokens: 5 # Expecting just a letter
+    evaluation_metrics:
+      - name: "exact_match"
+        options: { normalize: true, ignore_case: true }
+      - name: "accuracy" # First accuracy metric
+        options: {}
+      - name: "accuracy"
+        options: {weighted: false} # Second accuracy metric with different options
+
+model_parameters: {} # Global model loading parameters (distinct from generation params in advanced or handler_options)
+
+evaluation:
+  log_interval: 2 # Log intermediate metrics every 2 batches
+
+reporting:
+  enabled: true
+  format: "json" # Other options: "yaml", "csv", "pdf", "parquet"
+  output_dir: "./reports_comprehensive_en"
+
+advanced: # Global fallback parameters for task handlers and generation
+  batch_size: 4 # Can be overridden by model-specific or task-specific batch_size if implemented
+  truncation: true
+  padding: true
+  generate_max_length: 512 # Max length for tokenizer (prompt + max_new_tokens from handler_options)
+  skip_special_tokens: true
+  max_new_tokens: 150 # Default max_new_tokens if not set in handler_options
+  num_beams: 1
+  do_sample: false # Default to deterministic generation unless overridden in handler_options
+  use_cache: true
+  clean_up_tokenization_spaces: true

@@ -1,0 +1,107 @@
+{
+    "gemma-2b-hf": {
+        "CreativeThemeElaboration_EN": {
+            "rouge": {
+                "rouge1_f": 0.311047916993869,
+                "rougeL_f": 0.311047916993869
+            },
+            "average_elaboration_length": 50.125,
+            "keyword_match_count": 1.0,
+            "keyword_match_ratio": 0.125
+        },
+        "GSM8K_EN": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rougeL_f": 0.24957896841402843
+            }
+        },
+        "MMLU_Anatomy_EN": {
+            "exact_match": 0.4,
+            "accuracy": 0.4
+        }
+    },
+    "gpt2-hf-standard": {
+        "CreativeThemeElaboration_EN": {
+            "rouge": {
+                "rouge1_f": 0.23369662544442096,
+                "rougeL_f": 0.22959826478868328
+            },
+            "average_elaboration_length": 47.625,
+            "keyword_match_count": 5.0,
+            "keyword_match_ratio": 0.625
+        },
+        "GSM8K_EN": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rougeL_f": 0.24197209053435423
+            }
+        },
+        "MMLU_Anatomy_EN": {
+            "exact_match": 0.6,
+            "accuracy": 0.6
+        }
+    },
+    "gpt2-pytorch-loader": {
+        "CreativeThemeElaboration_EN": {
+            "rouge": {
+                "rouge1_f": 0.1626161021940209,
+                "rougeL_f": 0.1576161021940209
+            },
+            "average_elaboration_length": 46.875,
+            "keyword_match_count": 4.0,
+            "keyword_match_ratio": 0.5
+        },
+        "GSM8K_EN": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rougeL_f": 0.24197209053435423
+            }
+        },
+        "MMLU_Anatomy_EN": {
+            "exact_match": 0.6,
+            "accuracy": 0.6
+        }
+    },
+    "gpt2-tensorflow-loader": {
+        "CreativeThemeElaboration_EN": {
+            "rouge": {
+                "rouge1_f": 0.1769682330106994,
+                "rougeL_f": 0.1769682330106994
+            },
+            "average_elaboration_length": 47.0,
+            "keyword_match_count": 4.0,
+            "keyword_match_ratio": 0.5
+        },
+        "GSM8K_EN": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rougeL_f": 0.25506379497488996
+            }
+        },
+        "MMLU_Anatomy_EN": {
+            "exact_match": 0.6,
+            "accuracy": 0.6
+        }
+    },
+    "gpt2-custom-script-loader": {
+        "CreativeThemeElaboration_EN": {
+            "rouge": {
+                "rouge1_f": 0.1449281747420927,
+                "rougeL_f": 0.1449281747420927
+            },
+            "average_elaboration_length": 47.875,
+            "keyword_match_count": 6.0,
+            "keyword_match_ratio": 0.75
+        },
+        "GSM8K_EN": {
+            "exact_match": 0.0,
+            "rouge": {
+                "rougeL_f": 0.24197209053435423
+            }
+        },
+        "MMLU_Anatomy_EN": {
+            "exact_match": 0.6,
+            "accuracy": 0.6
+        }
+    }
+}
