@@ -29,3 +29,5 @@ streamlit
 seaborn
 plotly
 matplotlib
+pytest
+pytest-cov
