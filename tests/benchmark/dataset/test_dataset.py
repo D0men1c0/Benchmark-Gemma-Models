@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-
+from datasets import Dataset
 from src.benchmark.dataset.dataset_factory import DatasetFactory #
 from src.benchmark.dataset.concrete_dataset_loader import ConcreteDatasetLoader, CustomScriptDatasetLoader #
 from src.benchmark.dataset.base_dataset_loader import BaseDatasetLoader
@@ -133,12 +133,14 @@ def my_custom_loader(split, data_file_path, script_args=None):
     mock_spec_from_file_location.return_value = mock_spec
     
     mock_custom_module = MagicMock()
-    # This is how you'd make the function available on the mocked module
-    mock_custom_module.my_custom_loader = MagicMock(
-        side_effect=lambda split, data_file_path, **kwargs: MagicMock(spec=BaseDatasetLoader)
-    )
-    mock_module_from_spec.return_value = mock_custom_module
 
+    # This is how you'd make the function available on the mocked module
+    mock_dataset_instance = MagicMock(spec=Dataset) 
+
+    # Simulate the return value of the custom loader function
+    mock_dataset_instance.column_names = ['text', 'label'] 
+    mock_custom_module.my_custom_loader = MagicMock(return_value=mock_dataset_instance)
+    mock_module_from_spec.return_value = mock_custom_module
 
     loader_config = {
         "name": "my_custom_data",
@@ -146,24 +148,26 @@ def my_custom_loader(split, data_file_path, script_args=None):
         "script_path": str(custom_script_file),
         "function_name": "my_custom_loader",
         "split": "train",
-        "data_dir": str(tmp_path / "dummy_data_dir"), # Example, might be used by script
+        "data_dir": str(tmp_path / "dummy_data_dir"), 
         "script_args": {"param1": "test"}
     }
     loader = CustomScriptDatasetLoader(**loader_config)
 
     # Mock the _normalize_dataset method
-    with patch.object(loader, '_normalize_dataset', side_effect=lambda d, t: d) as mock_normalize:
-         dataset_result = loader.load(task_type="classification")
+    with patch.object(ConcreteDatasetLoader, '_normalize_dataset', side_effect=lambda d, t: d) as mock_normalize:
+        dataset_result = loader.load(task_type="classification")
 
     mock_spec_from_file_location.assert_called_once()
     mock_module_from_spec.assert_called_once_with(mock_spec)
+
+    mock_normalize.assert_called_once_with(mock_dataset_instance, "classification")
+    assert dataset_result is mock_dataset_instance # Should be the MagicMock from the side_effect
+
     mock_custom_module.my_custom_loader.assert_called_once_with(
         split="train",
         data_file_path=str(tmp_path / "dummy_data_dir"),
-        param1="test" # from script_args
+        param1="test" 
     )
-    assert dataset_result is not None # Should be the MagicMock from the side_effect
-    mock_normalize.assert_called_once()
 
 
 def test_custom_script_loader_file_not_found():

@@ -824,9 +824,9 @@ class SequenceLabelingMetrics(ListAccumulatingMetric):
             return {"overall_precision": 0.0, "overall_recall": 0.0, "overall_f1": 0.0}
 
         scheme = self._options.get("scheme", None) 
-        mode = self._options.get("mode", "default") # 'strict' or 'default'
-        average_type = self._options.get("average_type", "micro avg") # 'micro avg', 'macro avg', 'weighted avg'
-        
+        mode = self._options.get("mode", "default") 
+        average_type = self._options.get("average_type", "micro avg") # Default a "micro avg"
+
         try:
             report = seqeval_classification_report(
                 y_true=self._collected_labels, 
@@ -836,26 +836,27 @@ class SequenceLabelingMetrics(ListAccumulatingMetric):
                 output_dict=True,
                 zero_division=0 
             )
-            
-            if average_type in report:
+
+            # Check if the average type is in the report
+            if average_type in report and isinstance(report[average_type], dict):
                 avg_metrics = report[average_type]
                 return {
                     f'overall_precision': avg_metrics.get('precision', 0.0),
                     f'overall_recall': avg_metrics.get('recall', 0.0),
-                    f'overall_f1': avg_metrics.get('f1-score', 0.0) # f1-score is the key from seqeval
+                    f'overall_f1': avg_metrics.get('f1-score', 0.0) # f1-score is the key used in seqeval
                 }
             else:
-                logger.warning(f"Average type '{average_type}' not found in seqeval report. Available keys: {list(report.keys())}. Defaulting overall scores to 0.")
-                # Fallback to first available class if no standard average is found, or just return 0s
-                first_class_key = next((k for k in report if isinstance(report[k], dict) and 'f1-score' in report[k]), None)
-                if first_class_key and isinstance(report[first_class_key], dict):
-                     class_metrics = report[first_class_key]
-                     return {
-                        f'{first_class_key}_precision': class_metrics.get('precision',0.0),
-                        f'{first_class_key}_recall': class_metrics.get('recall',0.0),
-                        f'{first_class_key}_f1': class_metrics.get('f1-score',0.0),
-                     }
-                return {"overall_precision": 0.0, "overall_recall": 0.0, "overall_f1": 0.0, "error": f"Average type '{average_type}' not found."}
+                # Log a warning if the average type is not found or not a dict
+                logger.warning(
+                    f"Average type '{average_type}' not found in seqeval report or not a dict. "
+                    f"Available top-level keys: {list(report.keys())}."
+                )
+                return {
+                    "overall_precision": 0.0, 
+                    "overall_recall": 0.0, 
+                    "overall_f1": 0.0, 
+                    "error": f"Requested average type '{average_type}' not found in seqeval report. Available top-level keys: {list(report.keys())}"
+                }
 
         except Exception as e:
             logger.error(f"Error computing SequenceLabelingMetrics with seqeval: {e}", exc_info=True)
@@ -1308,14 +1309,24 @@ class CustomScriptMetric(BaseMetric):
         if self.update_fn and self.metric_state is not None:
             # Pass all options and specific script_args to the update function
             combined_options = {**self._options, **self.metric_script_args}
-            self.metric_state = self.update_fn(
-                current_state=self.metric_state,
-                predictions=predictions,
-                labels=labels,
-                options=combined_options
-            )
+            try:
+                self.metric_state = self.update_fn(
+                    current_state=self.metric_state,
+                    predictions=predictions,
+                    labels=labels,
+                    options=combined_options
+                )
+            except Exception as e:
+                logger.error(
+                    f"CustomScriptMetric: Error executing custom update_fn "
+                    f"'{self._options.get('metric_update_function_name')}' "
+                    f"from script '{self.script_path}': {e}",
+                    exc_info=True
+                )
         elif not self.update_fn:
-             logger.warning("CustomScriptMetric: update_fn not loaded, state not updated via script.")
+            logger.warning("CustomScriptMetric: update_fn not loaded, state not updated via script.")
+        elif self.metric_state is None and self.init_fn : # init_fn exists but state is None
+            logger.warning("CustomScriptMetric: metric_state is None, skipping update. Check init_fn.")
 
 
     def result(self) -> Union[float, Dict[str, float]]:
@@ -1324,9 +1335,17 @@ class CustomScriptMetric(BaseMetric):
         :return: Final metric result.
         """
         if self.result_fn and self.metric_state is not None:
-             # Pass all options and specific script_args to the result function
             combined_options = {**self._options, **self.metric_script_args}
-            return self.result_fn(final_state=self.metric_state, options=combined_options)
+            try:
+                return self.result_fn(final_state=self.metric_state, options=combined_options)
+            except Exception as e:
+                logger.error(
+                    f"CustomScriptMetric: Error executing custom result_fn "
+                    f"'{self._options.get('metric_result_function_name')}' "
+                    f"from script '{self.script_path}': {e}",
+                    exc_info=True 
+                )
+                return {"error": f"custom_metric_result_fn_failed: {e}"}
         else:
             logger.warning("CustomScriptMetric: result_fn not loaded or state is None. Returning default error value.")
             return {"error": "custom_metric_not_computed"}
