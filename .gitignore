@@ -5,3 +5,4 @@ src.zip
 src/config/benchmark_config(1).yaml
 src/config/prove123.yaml
 .coverage
+.coveragerc
