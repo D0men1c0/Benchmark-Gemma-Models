@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "benchmark_gemma_models"
+version = "0.1.0"
+authors = [
+  { name="D0men1c0", email="domenicolacavalla@gmail.com" },
+]
+description = "A flexible framework for benchmarking Large Language Models."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "transformers==4.49.0",
+    "datasets==3.3.2",
+    "evaluate==0.4.3",
+    "bitsandbytes==0.45.3",
+    "accelerate==1.6.0",
+    "pandas==2.2.3",
+    "numpy",
+    "scikit-learn==1.6.1",
+    "pyarrow==19.0.1",
+    "tqdm==4.67.1",
+    "huggingface-hub==0.29.3",
+    "torch==2.5.1",
+    "torchaudio==2.5.1",
+    "torchvision==0.20.1",
+    "sentence-transformers==4.0.1",
+    "seqeval==1.2.2",
+    "bert-score==0.3.13",
+    "nltk==3.9.1",
+    "rouge-score==0.1.2",
+    "fpdf==1.7.2",
+    "requests==2.32.3",
+    "python-dotenv==1.0.1",
+    "pyyaml==6.0.2",
+    "pydantic==2.11.3",
+    "rouge==1.0.1",
+    "tensorflow",
+    "tf-keras",
+    "streamlit",
+    "seaborn",
+    "plotly",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+]
+dev = [
+]
+
+
+[tool.setuptools.packages.find]
+where = ["src"] 
+namespaces = false 
+
+[tool.pytest.ini_options]
+python_files = "test_*.py"
+python_functions = "test_*"
+pythonpath = [".", "src"]

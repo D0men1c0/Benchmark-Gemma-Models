@@ -1,4 +1,6 @@
-# Benchmark-Gemma-Models [![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) 
+# Benchmark-Gemma-Models
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/) ![Coverage](img/coverage.svg)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) 
 [![Powered by Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Transformers-orange)](https://huggingface.co/transformers) [![Uses PyTorch](https://img.shields.io/badge/Uses-PyTorch-EE4C2C?logo=pytorch)](https://pytorch.org/) [![Uses TensorFlow](https://img.shields.io/badge/Uses-TensorFlow-FF6F00?logo=tensorflow)](https://www.tensorflow.org/) [![Built with Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
 
 ## Unleash Your LLM Benchmarking: Extreme Flexibility & Resource Mastery
@@ -9,8 +11,7 @@ Whether you're a researcher experimenting with novel evaluation techniques, a de
 
 ## Table of Contents
 - [Overview](#overview)
-- [Modular Architecture](#modular-architecture)
-  - [Directory Structure](#directory-structure)
+- [Directory Structure](#directory-structure)
 - [Quick Start](#quick-start)
 - [Examples & Getting Started](#examples--getting-started)
   - [Quick Test with Colab](#quick-test-with-colab)
@@ -20,6 +21,7 @@ Whether you're a researcher experimenting with novel evaluation techniques, a de
   - [Leveraging Custom Scripts for Ultimate Flexibility](#leveraging-custom-scripts-for-ultimate-flexibility)
 - [Core Components](#core-components)
 - [Key Advantages & Why Use This Benchmark Suite?](#key-advantages--why-use-this-benchmark-suite)
+- [Testing](#testing)
 - [Next Steps](#next-steps)
 - [License and Important Disclaimers](#license-and-important-disclaimers)
 
@@ -29,11 +31,7 @@ This framework offers a robust, automated, and scalable solution to assess the p
 
 ---
 
-## Modular Architecture
-
-The architecture is designed for clarity, maintainability, and extreme extensibility. Key components are managed through factories, allowing for easy integration of new models (from Hugging Face, PyTorch, TensorFlow, or custom loading scripts), datasets (from Hugging Face Hub, local files, or custom data loading functions), tasks (including custom task handlers), prompt strategies, post-processing routines (including regex-based and custom script-based), and evaluation metrics (including custom script-based metrics). Configuration is centralized using Pydantic models loaded from YAML files.
-
-### Directory Structure
+## Directory Structure
 ```bash
 ├── 📦 src/                     # Main source code
 │   ├── 📂 benchmark/           # Core benchmarking logic (models, datasets, tasks, evaluation, etc.)
@@ -327,6 +325,29 @@ Adding a new component only requires subclassing and registration.
 ### Framework Support
 - Native integration with Hugging Face Transformers, PyTorch, TensorFlow
 - Full support for custom loading logic via Python scripts
+
+---
+
+## Testing
+
+Basic testing has been implemented for this project using `pytest`. The current test suite focuses on covering the main functional areas (e.g., model loading, text generation) to ensure key components behave as expected.
+
+> **Note:** Testing coverage is still limited and primarily targets high-level workflows rather than edge cases or detailed unit-level behavior.
+
+### Running Tests
+
+To run the existing tests, make sure all dependencies are installed:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then execute the tests from the root directory:
+```bash
+pytest
+```
+
+This command will automatically discover and run tests within the `tests/ directory`. For more advanced usage and command-line options (e.g., running specific tests, verbose output, generating reports), please refer to the [official pytest documentation](https://docs.pytest.org/en/latest/how-to/usage.html).
 
 ---
 
