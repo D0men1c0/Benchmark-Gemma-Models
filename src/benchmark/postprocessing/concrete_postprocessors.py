@@ -54,23 +54,22 @@ def _extract_mmlu_choice_enhanced(generated_text: str, options: str = "ABCD") ->
         rf"\b([{options}])\b"  # Check for A, B, etc.     
     ]
     
-    last_found_match = None
-    best_match_pos = -1
+    first_match_position = float('inf')
+    best_match_char = None
 
     # Find the first match in the text
     for pattern in formatted_patterns:
-        for m in re.finditer(pattern, text_upper):
-            if m.start() > best_match_pos: # Only consider the first match in the text
-                best_match_pos = m.start()
-                last_found_match = m.group(1)
+        match = re.search(pattern, text_upper)
+        if match and match.start() < first_match_position:
+            first_match_position = match.start()
+            best_match_char = match.group(1)
     
-    if last_found_match:
-        return last_found_match
+    if best_match_char:
+        return best_match_char
 
     # Fallback: find the first A,B,C,D character anywhere
-    for char in text_upper:
-        if char in valid_options_set:
-            return char
+    if len(text_upper) == 1 and text_upper in valid_options_set:
+        return text_upper
             
     return "INVALID_PRED"
 
@@ -126,6 +125,9 @@ def _extract_gsm8k_final_answer_enhanced(generated_text: str) -> str:
     if matches:
         last_match = matches[-1]
         num_str = last_match.group(1).replace(',', '')
+        # Refine num_str: if it ends with a period and is not a decimal, remove the period
+        if num_str.endswith('.') and '.' not in num_str[:-1]:
+            num_str = num_str[:-1]
         try:
             float(num_str)
             return num_str
@@ -159,6 +161,8 @@ def _extract_gsm8k_final_answer_enhanced(generated_text: str) -> str:
     potential_numbers = re.findall(r"[-+]?\b\d[\d,.]*\b", text)
     if potential_numbers:
         last_num_str = potential_numbers[-1].replace(',', '')
+        if last_num_str.endswith('.') and '.' not in last_num_str[:-1]:
+            last_num_str = last_num_str[:-1]
         try:
             float(last_num_str)
             return last_num_str
@@ -274,10 +278,11 @@ class GlueMRPCOutputPostProcessor(BasePostProcessor):
         processed_predictions: List[int] = []
         for pred_text in predictions:
             text_lower = pred_text.strip().lower()
-            if "yes" in text_lower or re.search(r"\byes\b", text_lower) or "equivalent" in text_lower:
-                processed_predictions.append(1)
-            elif "no" in text_lower or re.search(r"\bno\b", text_lower) or "not equivalent" in text_lower:
+            # Prioritize "not equivalent" or more specific "no" checks
+            if "not equivalent" in text_lower or "no" in text_lower or re.search(r"\bno\b", text_lower):
                 processed_predictions.append(0)
+            elif "yes" in text_lower or re.search(r"\byes\b", text_lower) or "equivalent" in text_lower:
+                processed_predictions.append(1)
             else:
                 logger.warning(f"MRPC PostProcessor: Could not reliably parse paraphrase judgment from '{pred_text}'. Defaulting to class 0.")
                 processed_predictions.append(0) # Invalid prediction marker
@@ -354,25 +359,33 @@ class CreativeTextPostProcessor(BasePostProcessor):
                 processed_predictions_list.append({"cleaned_text": "", "word_count": 0, "original_text": None})
                 continue
 
+            # Start with basic stripping
             cleaned_text = str(pred_text).strip()
-            cleaned_text = " ".join(cleaned_text.split())
-            cleaned_text = cleaned_text.replace("\n ", "\n").replace(" \n", "\n")
-            
-            cleaned_text = re.sub(r'\n\s*\n', '\n\nPARA_BREAK\n\n', cleaned_text)
-            cleaned_text = re.sub(r'\s*\n\s*', ' ', cleaned_text)
-            cleaned_text = cleaned_text.replace('\n\nPARA_BREAK\n\n', '\n\n')
 
+            # Normalize line breaks to \n
+            cleaned_text = cleaned_text.replace('\r\n', '\n').replace('\r', '\n')
+
+            # Replace multiple newlines with a single special marker
+            cleaned_text = re.sub(r'\n\s*\n+', ' %%%PARA_BREAK%%% ', cleaned_text)
+
+            # Replace single newlines (that are not part of marked paragraphs) with a space
+            cleaned_text = cleaned_text.replace('\n', ' ')
+
+            # Collapse multiple spaces to a single space
+            cleaned_text = " ".join(cleaned_text.split())
+
+            # Restore paragraph breaks and strip leading/trailing spaces around them
+            cleaned_text = cleaned_text.replace(' %%%PARA_BREAK%%% ', '\n\n').strip()
 
             word_count = len(cleaned_text.split())
-            
+
             processed_predictions_list.append({
                 "cleaned_text": cleaned_text,
                 "word_count": word_count,
-                "original_text": pred_text
+                "original_text": pred_text 
             })
-        
-        processed_labels = [str(l) if l is not None else None for l in labels]
 
+        processed_labels = [str(l) if l is not None else None for l in labels]
         return processed_predictions_list, processed_labels
     
     
