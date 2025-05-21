@@ -1,4 +1,6 @@
-# Benchmark-Gemma-Models [![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) ![Coverage](img/coverage.svg)
+# Benchmark-Gemma-Models
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/) ![Coverage](img/coverage.svg)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) 
 [![Powered by Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Transformers-orange)](https://huggingface.co/transformers) [![Uses PyTorch](https://img.shields.io/badge/Uses-PyTorch-EE4C2C?logo=pytorch)](https://pytorch.org/) [![Uses TensorFlow](https://img.shields.io/badge/Uses-TensorFlow-FF6F00?logo=tensorflow)](https://www.tensorflow.org/) [![Built with Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
 
 ## Unleash Your LLM Benchmarking: Extreme Flexibility & Resource Mastery
@@ -9,8 +11,7 @@ Whether you're a researcher experimenting with novel evaluation techniques, a de
 
 ## Table of Contents
 - [Overview](#overview)
-- [Modular Architecture](#modular-architecture)
-  - [Directory Structure](#directory-structure)
+- [Directory Structure](#directory-structure)
 - [Quick Start](#quick-start)
 - [Examples & Getting Started](#examples--getting-started)
   - [Quick Test with Colab](#quick-test-with-colab)
@@ -30,11 +31,7 @@ This framework offers a robust, automated, and scalable solution to assess the p
 
 ---
 
-## Modular Architecture
-
-The architecture is designed for clarity, maintainability, and extreme extensibility. Key components are managed through factories, allowing for easy integration of new models (from Hugging Face, PyTorch, TensorFlow, or custom loading scripts), datasets (from Hugging Face Hub, local files, or custom data loading functions), tasks (including custom task handlers), prompt strategies, post-processing routines (including regex-based and custom script-based), and evaluation metrics (including custom script-based metrics). Configuration is centralized using Pydantic models loaded from YAML files.
-
-### Directory Structure
+## Directory Structure
 ```bash
 ├── 📦 src/                     # Main source code
 │   ├── 📂 benchmark/           # Core benchmarking logic (models, datasets, tasks, evaluation, etc.)
