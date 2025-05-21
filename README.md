@@ -1,8 +1,13 @@
-# Benchmark-Gemma-Models
-[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/) ![Coverage](img/coverage.svg)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) 
-[![Powered by Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Transformers-orange)](https://huggingface.co/transformers) [![Uses PyTorch](https://img.shields.io/badge/Uses-PyTorch-EE4C2C?logo=pytorch)](https://pytorch.org/) [![Uses TensorFlow](https://img.shields.io/badge/Uses-TensorFlow-FF6F00?logo=tensorflow)](https://www.tensorflow.org/) [![Built with Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
+# Benchmark-Gemma-Models [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb)
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
+![Coverage](img/coverage.svg)
+![Tests](https://img.shields.io/badge/tests-99%25_passed-blue.svg)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+[![Powered by Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Transformers-orange)](https://huggingface.co/transformers)
+[![Uses PyTorch](https://img.shields.io/badge/Uses-PyTorch-EE4C2C?logo=pytorch)](https://pytorch.org/)
+[![Uses TensorFlow](https://img.shields.io/badge/Uses-TensorFlow-FF6F00?logo=tensorflow)](https://www.tensorflow.org/)
+[![Built with Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
 ## Unleash Your LLM Benchmarking: Extreme Flexibility & Resource Mastery
 
 This framework is engineered for comprehensive, deeply customizable, and resource-conscious evaluation of Large Language Models (LLMs), with a primary focus on **Gemma models** and compatibility with **LLaMA**, **Mistral**, and other architectures. What sets this suite apart is its **unparalleled flexibility** through custom script integration for every core component (models, datasets, tasks, metrics, post-processing) and its meticulous **attention to resource optimization**, enabling extensive benchmarks even on constrained hardware.
