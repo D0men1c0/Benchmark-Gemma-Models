@@ -1,4 +1,4 @@
-# Benchmark-Gemma-Models [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb)
+# Benchmark-Gemma-Models [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/D0men1c0/Benchmark-Gemma-Models/blob/main/hello_world.ipynb) [![Read My Blog Post](https://img.shields.io/badge/Medium-Read_My_Blog_Post-black?logo=medium)](https://medium.com/@domenicolacavalla8/customizable-llm-evaluation-benchmarking-gemma-and-beyond-with-benchmark-gemma-models-9dc6a5266be8)
 [![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-green)](https://www.python.org/)
 ![Coverage](img/coverage.svg)
 ![Tests](https://img.shields.io/badge/tests-99%25_passed-blue.svg)
@@ -33,6 +33,9 @@ Whether you're a researcher experimenting with novel evaluation techniques, a de
 ## Overview
 
 This framework offers a robust, automated, and scalable solution to assess the performance of Large Language Models (LLMs), with a primary focus on **Gemma models**. It provides insights across diverse tasks, including standard academic benchmarks and custom datasets. The system emphasizes scalability through efficient batch processing, stateful metrics, and intelligent resource management; extensibility via a modular factory-based architecture that now fully supports custom user scripts for all core components; and ease of use, ensuring researchers can efficiently measure, compare, and reproduce model performance with unprecedented control.
+
+**Want a deeper dive into the philosophy, features, and how to get the most out of Benchmark-Gemma-Models?** Check out **my comprehensive blog post** on Medium:
+**➡️ [Customizable LLM Evaluation: Benchmarking Gemma and Beyond with Benchmark-Gemma-Models](https://medium.com/@domenicolacavalla8/customizable-llm-evaluation-benchmarking-gemma-and-beyond-with-benchmark-gemma-models-9dc6a5266be8)**
 
 ---
 
